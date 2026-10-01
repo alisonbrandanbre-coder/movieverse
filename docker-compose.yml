@@ -1,0 +1,45 @@
+# Entorno local de desarrollo: PostgreSQL + backend Django.
+# El frontend se ejecuta con `npm run dev` (ver README.md).
+# Valores por defecto sólo para desarrollo; nunca usar estas credenciales en producción.
+
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-movieverse}
+      POSTGRES_USER: ${POSTGRES_USER:-movieverse}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-movieverse}
+    ports:
+      - "${POSTGRES_HOST_PORT:-5432}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  backend:
+    build: ./backend
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      DJANGO_SETTINGS_MODULE: config.settings.development
+      DATABASE_URL: postgres://${POSTGRES_USER:-movieverse}:${POSTGRES_PASSWORD:-movieverse}@db:5432/${POSTGRES_DB:-movieverse}
+    ports:
+      - "${BACKEND_HOST_PORT:-8000}:8000"
+    volumes:
+      - ./backend:/app
+      - /app/.venv
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/v1/health')"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  postgres_data:
