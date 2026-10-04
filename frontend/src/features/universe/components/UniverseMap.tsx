@@ -12,7 +12,7 @@ import {
   type FitViewOptions,
   type Node,
 } from "@xyflow/react";
-import { Eraser, Info, LocateFixed, Minus, Plus, TriangleAlert } from "lucide-react";
+import { Eraser, Info, LocateFixed, Map as MapIcon, Minimize2, Minus, Plus, TriangleAlert } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { Link } from "react-router";
 
@@ -59,6 +59,7 @@ const MAX_FIT_ZOOM = 1.1; // few neighbors: don't blow posters up
 const FOCUS_ZOOM = 0.95;
 const FALLBACK_SIZE = { width: NODE_SIZE.poster, height: NODE_SIZE.height };
 const HEADER_HEIGHT = 64;
+const MINIMAP_SIZE = { width: 168, height: 112 };
 
 /** Width / height of the area the map is fitted into: the ring takes the same shape. */
 function mapAspect(): number {
@@ -105,6 +106,8 @@ function MapCanvas({ initial }: { initial: Neighborhood }) {
   const [hiddenTypes, setHiddenTypes] = useState<ReadonlySet<ConnectionType>>(() => new Set());
   const [expanding, setExpanding] = useState<number | null>(null);
   const [loadingSaga, setLoadingSaga] = useState(false);
+  // The minimap can be folded away: after expanding, a movie may end up beneath it.
+  const [showMinimap, setShowMinimap] = useState(true);
   const [feedback, setFeedback] = useState<Feedback>(null);
   const [degraded, setDegraded] = useState(initial.degraded);
 
@@ -363,6 +366,10 @@ function MapCanvas({ initial }: { initial: Neighborhood }) {
           onEdgeMouseLeave={() => setHoveredEdgeId(null)}
           onPaneClick={() => setSelectedId(null)}
           nodesConnectable={false}
+          // Keyboard users tab through the posters (buttons inside the nodes); edges and the
+          // node wrappers are not actionable, so they are not tab stops.
+          nodesFocusable={false}
+          edgesFocusable={false}
           elementsSelectable={false}
           minZoom={0.2}
           maxZoom={1.8}
@@ -370,17 +377,34 @@ function MapCanvas({ initial }: { initial: Neighborhood }) {
           aria-label="Mapa cinematográfico"
         >
           <Background variant={BackgroundVariant.Dots} gap={42} size={1.4} color="var(--color-violet-soft)" className="opacity-40" />
-          <MiniMap
-            pannable
-            zoomable
-            ariaLabel="Minimapa"
-            className="!hidden md:!block"
-            nodeColor={(node: Node) => (node.id === nodeId(rootId) ? "var(--color-gold)" : "var(--color-violet-light)")}
-            nodeStrokeWidth={0}
-            nodeBorderRadius={6}
-            style={{ width: 168, height: 112 }}
-          />
+          {showMinimap && (
+            <MiniMap
+              pannable
+              zoomable
+              ariaLabel="Minimapa"
+              className="!hidden md:!block"
+              nodeColor={(node: Node) => (node.id === nodeId(rootId) ? "var(--color-gold)" : "var(--color-violet-light)")}
+              nodeStrokeWidth={0}
+              nodeBorderRadius={6}
+              style={{ width: MINIMAP_SIZE.width, height: MINIMAP_SIZE.height }}
+            />
+          )}
         </ReactFlow>
+
+        {/* Minimap toggle (desktop only, like the minimap): on its corner, or alone when folded. */}
+        <button
+          type="button"
+          onClick={() => setShowMinimap((value) => !value)}
+          aria-pressed={showMinimap}
+          aria-label={showMinimap ? "Ocultar minimapa" : "Mostrar minimapa"}
+          title={showMinimap ? "Ocultar minimapa" : "Mostrar minimapa"}
+          className={`absolute right-4 z-10 hidden items-center gap-1.5 rounded-full border border-line bg-surface text-xs font-semibold text-fg-secondary shadow-card backdrop-blur-md transition hover:border-focus hover:text-fg focus-visible:outline-2 focus-visible:outline-focus md:flex ${
+            showMinimap ? "bottom-[8.4rem] p-1.5" : "bottom-4 px-3 py-2"
+          }`}
+        >
+          {showMinimap ? <Minimize2 className="size-3.5" aria-hidden /> : <MapIcon className="size-4" aria-hidden />}
+          {!showMinimap && "Minimapa"}
+        </button>
 
         {/* Top: breadcrumb + tools */}
         {/* One row even on phones: the breadcrumb scrolls/truncates instead of pushing the tools down. */}

@@ -5,6 +5,7 @@ import type {
   PopularityBucket,
   RecommendationSectionKey,
   Recommendations,
+  Surprise,
 } from "@/types/recommendations";
 
 interface RecommendationItemDto {
@@ -49,4 +50,19 @@ export async function getRecommendations(signal?: AbortSignal): Promise<Recommen
 
 export async function refreshRecommendations(): Promise<Recommendations> {
   return toRecommendations(await apiRequest<RecommendationsDto>("/recommendations/refresh", { method: "POST" }));
+}
+
+interface SurpriseDto {
+  movie: MovieSummaryDto;
+  section: RecommendationSectionKey;
+  popularity_bucket: PopularityBucket;
+  explanation: string;
+}
+
+/** Surprise mode: one of the user's best recommendations, drawn by the backend. */
+export async function getSurprise(exclude?: number): Promise<Surprise> {
+  const dto = await apiRequest<SurpriseDto>("/recommendations/surprise", {
+    params: exclude !== undefined ? { exclude } : undefined,
+  });
+  return { ...toSummary(dto.movie), explanation: dto.explanation, popularityBucket: dto.popularity_bucket };
 }

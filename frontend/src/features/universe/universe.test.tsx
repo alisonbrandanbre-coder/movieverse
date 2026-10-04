@@ -394,3 +394,18 @@ describe("Sagas", () => {
     expect(screen.getByRole("tooltip")).toHaveTextContent("De la saga Harry Potter");
   });
 });
+
+describe("Minimap", () => {
+  it("folds away so it never hides a movie, and comes back", async () => {
+    renderMap({ "GET /graph/movies/1": () => jsonResponse(INTERSTELLAR) });
+    await nodeButton("Interstellar (2014)");
+    const minimap = () => document.querySelector(".react-flow__minimap");
+    expect(minimap()).not.toBeNull();
+
+    await userEvent.click(screen.getByRole("button", { name: "Ocultar minimapa" }));
+    expect(minimap()).toBeNull();
+
+    await userEvent.click(screen.getByRole("button", { name: "Mostrar minimapa" }));
+    expect(minimap()).not.toBeNull();
+  });
+});

@@ -21,7 +21,12 @@ function PersonAvatar({ name, src }: { name: string; src: string | null }) {
 
 function CastList({ cast }: { cast: CastMember[] }) {
   return (
-    <ul className="-mx-4 flex snap-x gap-5 overflow-x-auto px-4 pb-3 sm:mx-0 sm:px-0">
+    // Scrolls sideways: focusable so keyboard users can scroll it with the arrow keys.
+    <ul
+      tabIndex={0}
+      aria-label="Reparto principal"
+      className="-mx-4 flex snap-x gap-5 overflow-x-auto rounded-control px-4 pb-3 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-focus sm:mx-0 sm:px-0"
+    >
       {cast.map((member) => (
         <li key={member.id} className="flex w-28 shrink-0 snap-start flex-col items-center gap-2 text-center">
           <PersonAvatar name={member.name} src={member.profileUrl} />

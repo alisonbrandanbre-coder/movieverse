@@ -26,6 +26,26 @@ class RecommendationItemSerializer(serializers.ModelSerializer):
         }
 
 
+class SurpriseQuerySerializer(serializers.Serializer):
+    """`exclude`: the previous surprise (comma-separated ids are accepted too)."""
+
+    exclude = serializers.CharField(required=False, allow_blank=True)
+
+    def validate_exclude(self, value: str) -> list[int]:
+        try:
+            return [int(part) for part in value.split(",") if part.strip()]
+        except ValueError as exc:
+            raise serializers.ValidationError("Debe ser una lista de ids.") from exc
+
+
+class SurpriseSerializer(serializers.ModelSerializer):
+    movie = MovieSummarySerializer(read_only=True)
+
+    class Meta:
+        model = RecommendationSnapshot
+        fields = ["movie", "section", "popularity_bucket", "explanation"]
+
+
 def serialize_result(result) -> dict:
     run = result.run
     return {

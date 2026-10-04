@@ -22,3 +22,6 @@ export interface Recommendations {
   notice: string | null;
   sections: RecommendationSection[];
 }
+
+/** Surprise mode's pick (EPIC 4): drawn by the backend among the user's best recommendations. */
+export type Surprise = RecommendedMovie;

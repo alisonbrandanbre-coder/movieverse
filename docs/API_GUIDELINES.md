@@ -144,7 +144,7 @@ Directores y los 10 primeros actores.
 ```text
 GET  /recommendations
 POST /recommendations/refresh
-GET  /recommendations/surprise   (Sprint 5)
+GET  /recommendations/surprise?exclude=<id>
 ```
 
 Siempre del usuario autenticado. Toda la lógica vive en `RecommendationService` (docs/RECOMMENDER_SPEC.md); el frontend sólo muestra lo que devuelve la API.
@@ -178,6 +178,24 @@ Siempre del usuario autenticado. Toda la lógica vive en `RecommendationService`
 - `popularity_bucket` ∈ `VERY_POPULAR | POPULAR | MEDIUM | HIDDEN`.
 - `is_fallback: true` → el onboarding no está completo: populares bien valoradas, sin personalizar, con `notice` explicándolo.
 - `degraded: true` → alguna fuente de TMDB falló sin caché: se responde igual (200) con lo disponible y un `notice`.
+
+## Surprise
+
+`GET /recommendations/surprise` elige una película al azar entre las 20 mejores recomendaciones del usuario (por `final_score`, de la última generación; si está desactualizada se regenera antes):
+
+- nunca la número 1, nunca una vista o rechazada (aunque se haya marcado después de generar las recomendaciones) y nunca `exclude` (la sorpresa anterior; acepta ids separados por coma);
+- sorteo ponderado por `final_score`, con el doble de peso para `MEDIUM` y `HIDDEN`.
+
+```json
+{
+  "movie": {"id": 120, "tmdb_id": 14337, "title": "Primer", "release_year": 2004, "poster_url": "...", "vote_average": 6.9},
+  "section": "HIDDEN_GEMS",
+  "popularity_bucket": "HIDDEN",
+  "explanation": "Porque te gustó Moon y preferís ciencia ficción; es una joya poco conocida."
+}
+```
+
+Sin candidatas: `404` con `code: "NO_SURPRISE"`. `exclude` inválido: `400`.
 
 # Graph
 

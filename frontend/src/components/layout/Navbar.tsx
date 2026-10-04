@@ -4,6 +4,7 @@ import { Link, NavLink, useNavigate } from "react-router";
 
 import { Logo } from "@/components/brand/Logo";
 import { useAuth } from "@/features/auth/useAuth";
+import { SurpriseButton } from "@/features/recommendations/components/Surprise";
 
 const PRIVATE_LINKS = [
   { to: "/search", label: "Buscar", icon: Search },
@@ -42,6 +43,7 @@ export function Navbar() {
           {label}
         </NavLink>
       ))}
+      <SurpriseButton variant="nav" onOpen={() => setOpen(false)} />
       <button type="button" onClick={handleLogout} className={navLinkClass({ isActive: false })}>
         <LogOut className="size-4" aria-hidden />
         Salir
@@ -57,12 +59,14 @@ export function Navbar() {
         </Link>
         {isAuthenticated && (
           <>
-            <div className="hidden items-center gap-1 md:flex">{links}</div>
+            {/* Six items: the full row only fits from lg; tablets use the menu button too. */}
+            <div className="hidden items-center gap-1 lg:flex">{links}</div>
             <button
               type="button"
-              className="rounded-control p-2 text-fg-secondary hover:bg-violet/10 md:hidden"
+              className="rounded-control p-2 text-fg-secondary hover:bg-violet/10 focus-visible:outline-2 focus-visible:outline-focus lg:hidden"
               aria-label={open ? "Cerrar menú" : "Abrir menú"}
               aria-expanded={open}
+              aria-controls="mobile-menu"
               onClick={() => setOpen((value) => !value)}
             >
               {open ? <X className="size-5" /> : <Menu className="size-5" />}
@@ -70,7 +74,11 @@ export function Navbar() {
           </>
         )}
       </nav>
-      {isAuthenticated && open && <div className="flex flex-col gap-1 border-t border-line px-4 py-3 md:hidden">{links}</div>}
+      {isAuthenticated && open && (
+        <nav id="mobile-menu" aria-label="Menú" className="flex flex-col gap-1 border-t border-line px-4 py-3 lg:hidden">
+          {links}
+        </nav>
+      )}
     </header>
   );
 }

@@ -19,10 +19,9 @@ Secciones:
 
 - Para vos;
 - Joyas para descubrir;
-- Continuá explorando;
-- Modo sorpresa (Sprint 5).
+- Continuá explorando.
 
-Cada card tiene "¿Por qué?", que muestra la explicación de la API. Botón "Refrescar", estados de carga, error y vacío, y aviso cuando la respuesta es fallback o degradada.
+Cada card tiene "¿Por qué?", que muestra la explicación de la API. Botones "Sorprendeme" (modo sorpresa) y "Refrescar", estados de carga, error y vacío, y aviso cuando la respuesta es fallback o degradada.
 
 # 5. Buscar
 
@@ -93,10 +92,14 @@ Tabs:
 
 # 9. Modo sorpresa
 
-Una recomendación destacada con:
+Implementado en Sprint 5. Botón "Sorprendeme" en Descubrir y en el menú principal. Abre un modal con una película elegida al azar **entre las ~20 mejores recomendaciones del usuario** (nunca la número 1, con el doble de chances para las menos conocidas):
 
-- poster;
-- motivo;
-- “otra opción”;
-- guardar;
-- vista.
+- póster destacado, título, año, puntaje y si es "Joya poco conocida" / "Para descubrir" / "Popular";
+- el "¿Por qué?" de la recomendación;
+- "Ver ficha" (desde ahí se guarda o se marca como vista), "Explorar universo" y "Otra".
+
+Nunca repite vistas, rechazadas ni la que está en pantalla. Si todavía no hay recomendaciones suficientes, lo explica y ofrece buscar películas.
+
+# 10. Página no encontrada
+
+404 con estilo espacial: una constelación a la que le falta una estrella, "Te perdiste en el espacio" y botones a Descubrir y Buscar (o a iniciar sesión, sin cuenta).

@@ -10,6 +10,7 @@ DEGRADED_RETRY has passed. So a like / dislike / watched / favorite changes the 
 `GET /recommendations` without an explicit refresh.
 """
 
+import random
 from dataclasses import dataclass
 from datetime import timedelta
 
@@ -17,6 +18,8 @@ from django.db import IntegrityError, transaction
 from django.utils import timezone
 
 from apps.accounts.models import User
+from apps.common.exceptions import ServiceError
+from apps.interactions.models import Interaction, InteractionType
 from apps.movies.models import MoviePerson
 from apps.movies.services.movie_service import MovieService
 from apps.preferences.services import TasteProfileService
@@ -38,6 +41,9 @@ FALLBACK_GEM_MIN_QUALITY = 0.6
 RUN_MAX_AGE = timedelta(hours=24)
 DEGRADED_RETRY = timedelta(minutes=10)
 LESSER_KNOWN = (PopularityBucket.MEDIUM, PopularityBucket.HIDDEN)
+# Surprise mode: a weighted draw among the best recommendations, never the obvious #1.
+SURPRISE_POOL = 20
+SURPRISE_LESSER_KNOWN_BOOST = 2.0  # MEDIUM / HIDDEN titles are twice as likely
 
 FALLBACK_NOTICE = (
     "Todavía no completaste el onboarding: te mostramos películas populares y bien "
@@ -46,6 +52,14 @@ FALLBACK_NOTICE = (
 DEGRADED_NOTICE = (
     "El catálogo de TMDB no respondió del todo: las recomendaciones pueden ser menos variadas."
 )
+
+
+class NoSurprise(ServiceError):
+    status_code = 404
+    default_code = "NO_SURPRISE"
+    default_detail = (
+        "Todavía no tenemos una película para sorprenderte. Marcá algunas que te gusten."
+    )
 
 
 @dataclass(frozen=True)
@@ -77,6 +91,35 @@ class RecommendationService:
 
     def refresh(self, user: User) -> RecommendationResult:
         return self._load(self._generate(user, TasteProfileService.taste(user)))
+
+    def surprise(
+        self, user: User, exclude: frozenset[int] = frozenset(), rng: random.Random | None = None
+    ) -> RecommendationSnapshot:
+        """Surprise mode (EPIC 4): a random pick among the user's ~20 best recommendations.
+
+        Not the #1 (that one is already first in Descubrir) and not `exclude` (the previous
+        surprise). Watched and rejected titles are skipped even if marked after the run was
+        generated. The draw is weighted by score, lesser-known titles count double. Raises
+        `NoSurprise` when nothing is left.
+        """
+        rows = sorted(
+            (row for rows in self.get(user).sections.values() for row in rows),
+            key=lambda row: (-row.final_score, row.movie_id),
+        )[:SURPRISE_POOL]
+        marked = set(
+            Interaction.objects.filter(
+                user=user, type__in=[InteractionType.WATCHED, InteractionType.DISLIKE]
+            ).values_list("movie_id", flat=True)
+        )
+        pool = [r for r in rows[1:] if r.movie_id not in marked and r.movie_id not in exclude]
+        if not pool:
+            raise NoSurprise()
+        weights = [
+            max(row.final_score, 0.01)
+            * (SURPRISE_LESSER_KNOWN_BOOST if row.popularity_bucket in LESSER_KNOWN else 1.0)
+            for row in pool
+        ]
+        return (rng or random).choices(pool, weights=weights, k=1)[0]
 
     def rank(self, taste: Taste) -> tuple[dict[str, list[Scored]], bool]:
         """Scored picks per section for a taste, without persisting: (sections, degraded)."""

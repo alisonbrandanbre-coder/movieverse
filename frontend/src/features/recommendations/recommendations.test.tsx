@@ -169,3 +169,85 @@ describe("DiscoverPage", () => {
     await waitFor(() => expect(screen.getByText("Texto A.")).toBeInTheDocument());
   });
 });
+
+describe("Surprise mode", () => {
+  function surprise(id: number, title: string, bucket = "HIDDEN") {
+    return {
+      movie: { ...INTERSTELLAR_SUMMARY_DTO, id, tmdb_id: 2000 + id, title },
+      section: "HIDDEN_GEMS",
+      popularity_bucket: bucket,
+      explanation: `Porque preferís ciencia ficción; ${title} es una joya poco conocida.`,
+    };
+  }
+
+  it("opens a dialog with the pick, why, and its next steps; «Otra» never repeats it", async () => {
+    const draws = [surprise(20, "Coherence"), surprise(21, "Moon", "MEDIUM")];
+    const fetchMock = renderDiscover({
+      "GET /recommendations": () => jsonResponse(recommendations()),
+      "GET /recommendations/surprise": () => jsonResponse(draws.shift()),
+    });
+
+    await userEvent.click(await screen.findByRole("button", { name: "Sorprendeme" }));
+
+    const dialog = await screen.findByRole("dialog", { name: "Coherence" });
+    expect(within(dialog).getByText("Porque preferís ciencia ficción; Coherence es una joya poco conocida.")).toBeInTheDocument();
+    expect(within(dialog).getByText("Joya poco conocida")).toBeInTheDocument();
+    expect(within(dialog).getByRole("img", { name: "Póster de Coherence" })).toBeInTheDocument();
+    expect(within(dialog).getByRole("link", { name: /Ver ficha/ })).toHaveAttribute("href", "/movies/20");
+    expect(within(dialog).getByRole("link", { name: /Explorar universo/ })).toHaveAttribute("href", "/universe/20");
+
+    await userEvent.click(within(dialog).getByRole("button", { name: "Otra" }));
+
+    expect(await screen.findByRole("dialog", { name: "Moon" })).toBeInTheDocument();
+    const calls = fetchMock.mock.calls.map(([url]) => String(url)).filter((url) => url.includes("/surprise"));
+    expect(new URL(calls[0]).searchParams.get("exclude")).toBeNull();
+    expect(new URL(calls[1]).searchParams.get("exclude")).toBe("20"); // never the one on screen
+  });
+
+  it("is also in the main menu, closes with Escape and gives the focus back", async () => {
+    renderDiscover({
+      "GET /recommendations": () => jsonResponse(recommendations()),
+      "GET /recommendations/surprise": () => jsonResponse(surprise(20, "Coherence")),
+    });
+    const nav = await screen.findByRole("navigation", { name: "Principal" });
+    const trigger = await within(nav).findByRole("button", { name: "Sorprendeme" });
+
+    await userEvent.click(trigger);
+    expect(await screen.findByRole("dialog", { name: "Coherence" })).toBeInTheDocument();
+    await userEvent.keyboard("{Escape}");
+
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    expect(trigger).toHaveFocus();
+  });
+
+  it("explains when there is nothing to suggest yet", async () => {
+    renderDiscover({
+      "GET /recommendations": () => jsonResponse(recommendations()),
+      "GET /recommendations/surprise": () =>
+        apiError(404, "NO_SURPRISE", "Todavía no tenemos una película para sorprenderte. Marcá algunas que te gusten."),
+    });
+
+    await userEvent.click(await screen.findByRole("button", { name: "Sorprendeme" }));
+
+    const dialog = await screen.findByRole("dialog");
+    expect(await within(dialog).findByText("Todavía no hay sorpresas")).toBeInTheDocument();
+    expect(within(dialog).getByRole("link", { name: /Buscar películas/ })).toHaveAttribute("href", "/search");
+  });
+
+  it("shows loading and a retry on errors", async () => {
+    let fail = true;
+    renderDiscover({
+      "GET /recommendations": () => jsonResponse(recommendations()),
+      "GET /recommendations/surprise": () =>
+        fail ? apiError(503, "TMDB_UNAVAILABLE", "El catálogo no está disponible.") : jsonResponse(surprise(20, "Coherence")),
+    });
+
+    await userEvent.click(await screen.findByRole("button", { name: "Sorprendeme" }));
+    const dialog = await screen.findByRole("dialog");
+    expect(await within(dialog).findByText("No pudimos sorprenderte")).toBeInTheDocument();
+
+    fail = false;
+    await userEvent.click(within(dialog).getByRole("button", { name: "Reintentar" }));
+    expect(await screen.findByRole("dialog", { name: "Coherence" })).toBeInTheDocument();
+  });
+});

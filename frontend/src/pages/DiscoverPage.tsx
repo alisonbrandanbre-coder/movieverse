@@ -11,6 +11,7 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { ErrorState } from "@/components/ui/ErrorState";
 import { LoadingState } from "@/components/ui/LoadingState";
 import { RecommendationSection } from "@/features/recommendations/components/RecommendationSection";
+import { SurpriseButton } from "@/features/recommendations/components/Surprise";
 import { useRecommendations, useRefreshRecommendations } from "@/features/recommendations/hooks";
 import type { RecommendationSectionKey } from "@/types/recommendations";
 
@@ -48,15 +49,17 @@ export function DiscoverPage() {
         description="Películas elegidas para vos y joyas menos obvias, conectadas por lo que más te gusta."
       />
       {recommendations.isSuccess && (
-        <Button
-          variant="secondary"
-          className="self-start sm:self-auto"
-          disabled={refresh.isPending}
-          onClick={() => refresh.mutate(undefined, { onSuccess: () => setRefreshed(true) })}
-        >
-          <RefreshCw className={`size-4 ${refresh.isPending ? "animate-spin" : ""}`} aria-hidden />
-          {refresh.isPending ? "Actualizando…" : "Refrescar"}
-        </Button>
+        <div className="flex flex-wrap gap-2 self-start sm:self-auto">
+          <SurpriseButton />
+          <Button
+            variant="secondary"
+            disabled={refresh.isPending}
+            onClick={() => refresh.mutate(undefined, { onSuccess: () => setRefreshed(true) })}
+          >
+            <RefreshCw className={`size-4 ${refresh.isPending ? "animate-spin" : ""}`} aria-hidden />
+            {refresh.isPending ? "Actualizando…" : "Refrescar"}
+          </Button>
+        </div>
       )}
     </div>
   );
