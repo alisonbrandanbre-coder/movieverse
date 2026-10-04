@@ -141,7 +141,7 @@ UNIQUE(user, movie): una película aparece una sola vez por usuario. Índice (ru
 
 # Graph
 
-No se persiste como estructura completa en V1.
+No se persiste como estructura completa en V1. Las listas de TMDB que lo alimentan sí quedan en `TMDBListCache` (claves `person:{tmdb_id}:directed`, `person:{tmdb_id}:lead`, `recommendations:{tmdb_id}`, `similar:{tmdb_id}`), y sus películas en `Movie`.
 
 El GraphService construye conexiones a demanda desde:
 

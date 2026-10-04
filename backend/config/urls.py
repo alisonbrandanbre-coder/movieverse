@@ -9,6 +9,7 @@ api_v1 = [
     path("", include("apps.interactions.urls")),
     path("movies/", include("apps.movies.urls")),
     path("", include("apps.recommendations.urls")),
+    path("", include("apps.graph.urls")),
 ]
 
 urlpatterns = [

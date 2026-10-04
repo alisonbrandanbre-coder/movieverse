@@ -75,6 +75,10 @@ class TMDBClient:
         """TMDB's "people who liked this also liked" list for a movie (recommender seeds)."""
         return self._get(f"/movie/{int(tmdb_id)}/recommendations", {"page": page})
 
+    def get_person_movie_credits(self, person_tmdb_id: int) -> dict[str, Any]:
+        """A person's filmography: `cast` (with `order`) and `crew` (with `job`). Graph."""
+        return self._get(f"/person/{int(person_tmdb_id)}/movie_credits")
+
     def discover_movies(self, params: dict[str, Any], page: int = 1) -> dict[str, Any]:
         """`/discover/movie` with arbitrary filters (genres, dates, language, votes, sort)."""
         return self._get("/discover/movie", {**params, "page": page, "include_adult": "false"})

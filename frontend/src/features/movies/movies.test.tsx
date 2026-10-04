@@ -131,7 +131,7 @@ describe("MovieDetailPage", () => {
     expect(screen.getByText("Cooper")).toBeInTheDocument();
   });
 
-  it("keeps the cinematic map disabled until Sprint 4", async () => {
+  it("links to the cinematic map", async () => {
     mockFetch({
       "GET /auth/me": me,
       "GET /movies/1": () => jsonResponse(INTERSTELLAR_DETAIL_DTO),
@@ -140,7 +140,7 @@ describe("MovieDetailPage", () => {
     });
     renderWithProviders(<AppRoutes />, { route: "/movies/1", authenticated: true });
 
-    expect(await screen.findByRole("button", { name: /Explorar universo/ })).toBeDisabled();
+    expect(await screen.findByRole("link", { name: /Explorar universo/ })).toHaveAttribute("href", "/universe/1");
   });
 
   it("shows a loading state", async () => {

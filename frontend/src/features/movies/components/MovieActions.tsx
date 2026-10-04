@@ -1,10 +1,10 @@
 import { Bookmark, Eye, Heart, Orbit, ThumbsDown, ThumbsUp, type LucideIcon } from "lucide-react";
 import { useState } from "react";
+import { Link } from "react-router";
 
 import { getErrorMessage } from "@/api/client";
 import { Button } from "@/components/ui/Button";
 import { ToggleButton } from "@/components/ui/ToggleButton";
-import { Tooltip } from "@/components/ui/Tooltip";
 import { buttonClasses } from "@/components/ui/buttonClasses";
 import { useMovieInteractions, useToggleInteraction } from "@/features/interactions/hooks";
 import type { InteractionType, MovieInteractionState } from "@/types/interactions";
@@ -57,8 +57,6 @@ function clearedLists(before: MovieInteractionState, after: MovieInteractionStat
   return cleared;
 }
 
-const SOON = "Próximamente";
-
 export function MovieActions({ movieId }: { movieId: number }) {
   const interactions = useMovieInteractions(movieId);
   const toggle = useToggleInteraction(movieId);
@@ -83,19 +81,10 @@ export function MovieActions({ movieId }: { movieId: number }) {
 
   return (
     <div className="flex flex-col gap-4">
-      <Tooltip text={SOON} className="self-start">
-        {(tooltipId) => (
-          <button
-            type="button"
-            disabled
-            aria-describedby={tooltipId}
-            className={`${buttonClasses({ size: "lg" })} pointer-events-none px-9 text-lg`}
-          >
-            <Orbit className="size-5" aria-hidden />
-            Explorar universo
-          </button>
-        )}
-      </Tooltip>
+      <Link to={`/universe/${movieId}`} className={`${buttonClasses({ size: "lg" })} self-start px-9 text-lg`}>
+        <Orbit className="size-5" aria-hidden />
+        Explorar universo
+      </Link>
 
       {interactions.isError ? (
         <div role="alert" className="flex flex-wrap items-center gap-3 text-sm text-danger">

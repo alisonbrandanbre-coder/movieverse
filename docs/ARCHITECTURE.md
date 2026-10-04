@@ -95,6 +95,23 @@ Futuro:
 - UNIVERSE
 - KEYWORD
 
+Implementación (Sprint 4, `apps/graph/services.py`):
+
+```text
+GraphService.neighborhood(movie_id, limit)
+  ├─ centro: MovieService.get_details / get_credits (caché local; si TMDB cae, lo guardado)
+  ├─ candidatos (MovieService.cached_lists → TMDBListCache, en paralelo):
+  │   ├─ person:{id}:directed   filmografía de cada director (/person/{id}/movie_credits)
+  │   ├─ person:{id}:lead       películas donde cada uno de los 5 actores principales es principal
+  │   ├─ recommendations:{id} / similar:{id}
+  │   └─ + créditos locales (MoviePerson) + películas locales conocidas con géneros compartidos
+  ├─ strength por tipo → una arista por película con todos sus motivos
+  ├─ orden → diversidad (≤ 1/2 por tipo, ≤ 1/3 sólo género, ≤ 4 por persona; relajado hasta 8)
+  └─ top `limit` (≤ 12)
+```
+
+Las listas de TMDB (incluidas las de recomendaciones del Sprint 3) comparten la caché, así que expandir un nodo ya visitado no llama a TMDB: ~1,3 s la primera vez, ~0,1 s después.
+
 # Expansión
 
 Endpoint:

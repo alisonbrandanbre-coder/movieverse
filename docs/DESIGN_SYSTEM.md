@@ -27,7 +27,7 @@ Identidad visual de MovieVerse: **cinematográfico estilo Letterboxd/MUBI con un
 | `violet` | `#8B5CFF` | `to-violet`, `bg-violet/15` | Fin del gradiente, fondos tenues |
 | `violet-light` | `#A98DFF` | `text-violet-light` | "VERSE", segunda línea del claim, subrayado del nav |
 | `violet-soft` | `#B39BFF` | `text-violet-soft` | Links, chips de género, íconos de estados vacíos |
-| `gold` | `#F5C76B` | `text-gold` | **Sólo** puntajes (★) y la estrella del logo |
+| `gold` | `#F5C76B` | `text-gold` | **Sólo** puntajes (★), la estrella del logo y, en el mapa, la película central ("la estrella") y las conexiones por director (la más fuerte) |
 | `crawl` | `#E9D7A0` | `text-crawl` | Texto de la intro |
 | `danger` / `danger-strong` | `#FF9DB3` / `#F0517A` | `text-danger`, `border-danger-strong` | Errores |
 
@@ -70,6 +70,8 @@ Etiquetas: utility **`eyebrow`** = 12 px, bold, mayúsculas, `letter-spacing: 4p
 | `drop-shadow-planet` | Halo violeta alrededor del planeta |
 | `animate-twinkle` · `animate-float` · `animate-comet` | Fondo espacial |
 | `animate-fade-up` | Entrada de bloques (también cada paso del onboarding) |
+| `animate-node-in` · `animate-edge-in` | Mapa: una película "se enciende" en su lugar (escala + blur) y su conexión aparece en fundido, escalonadas según el orden de llegada |
+| `animate-star-in` | Estrellas que aparecen una a una (`StarsLoadingState`) |
 | `animate-pop` | Pulso de 0,35 s del ícono de un `ToggleButton` al activarse |
 | `animate-intro-*` | Timeline de la intro (3 s) |
 
@@ -112,6 +114,7 @@ ffmpeg -i ImagenesReferencia/Planeta.png -vf "scale=800:800:flags=lanczos,format
 | `Pagination` | `components/ui/Pagination.tsx` | "Anterior · Página X de Y · Siguiente"; no renderiza nada con una sola página. Búsqueda y listas del perfil. |
 | `MovieCard` | `features/movies/components/MovieCard.tsx` | Póster 2:3 (radio 14 px, sombra); título, año y ★ puntaje dorado. Hover: sube 6 px, borde violeta con glow y chip "Explorar universo". Sin póster: placeholder con gradiente y el título en Bebas Neue (`PosterImage`). Usar dentro de `MovieGrid`. |
 | `MovieGrid` | `features/movies/components/MovieGrid.tsx` | Grilla responsive de `MovieCard`. `renderAction(movie)` opcional agrega un control debajo de cada tarjeta, fuera del link (p. ej. "Quitar" en el perfil). |
+| `StarsLoadingState` | `components/ui/StarsLoadingState.tsx` | Carga temática: una constelación chica cuyas estrellas se encienden en secuencia (la central en dorado), con texto. Para el mapa. |
 | `EmptyState` / `ErrorState` / `LoadingState` | `components/ui/` | Ícono en círculo con glow, título display, descripción y CTA (`children`). |
 
 ### Layout
@@ -132,8 +135,9 @@ ffmpeg -i ImagenesReferencia/Planeta.png -vf "scale=800:800:flags=lanczos,format
 | `/login`, `/register` | `AuthLayout` | "Iniciá sesión / Tu universo te está esperando." · botón "Entrar al universo". |
 | `/search` | `SearchPage` | Eyebrow "EXPLORAR", barra grande con `emphasis`, contador, `MovieGrid`. |
 | `/onboarding` | `OnboardingPage` | `PageHeader` "Armá tu constelación" + `Card` con eyebrow "Paso X de 6", `ProgressBar`, título del paso en display (recibe el foco al cambiar de paso), contenido y pie con Atrás (`secondary`) / Siguiente o Terminar (`primary`). Pasos con `Chip`, `ChoiceCard` y, en la valoración rápida, pósters con dos `ToggleButton` de sólo ícono. |
-| `/movies/:id` | `MovieDetailPage` | Backdrop a lo ancho con máscara/degradado hacia `base`, póster, título display, puntaje dorado, año · duración · idioma, chips de género, sinopsis, "Explorar universo" (deshabilitado con tooltip "Próximamente"), fila de `ToggleButton` (Favorita · Pendiente · Vista · Me gusta · No me interesa) con mensaje de confirmación en `violet-soft` (`role="status"`), reparto en fila horizontal con scroll. |
+| `/movies/:id` | `MovieDetailPage` | Backdrop a lo ancho con máscara/degradado hacia `base`, póster, título display, puntaje dorado, año · duración · idioma, chips de género, sinopsis, "Explorar universo" (link a `/universe/:id`), fila de `ToggleButton` (Favorita · Pendiente · Vista · Me gusta · No me interesa) con mensaje de confirmación en `violet-soft` (`role="status"`), reparto en fila horizontal con scroll. |
 | `/profile` | `ProfilePage` | Avatar + `h1`, `Tabs` Favoritas / Pendientes / Vistas (con contador) / Preferencias. Listas: `MovieGrid` con "Quitar" (`ghost`) + `Pagination`; vacías: `EmptyState` en `Card` con CTA a Buscar. Preferencias: secciones con `eyebrow` y los mismos selectores del onboarding. |
+| `/universe/:movieId` | `UniversePage` | Pantalla inmersiva: ocupa el viewport sin footer (el crédito de TMDB queda abajo al centro), con el `SpaceBackground` detrás y una grilla de puntos `violet-soft` que se mueve con el pan/zoom. **Nodos**: póster `rounded-poster` con título y año abajo; el centro más grande, con **borde dorado** y `shadow-halo`; el foco actual (último expandido) con borde `violet-light`; los vecinos con `shadow-glow`. Al seleccionar uno, el resto se atenúa. **Aristas** (`connectionStyles.ts`): director `gold`, actor `blue`, similar `violet-light` y género `fg-muted` punteado (no depende sólo del color), con grosor `1 + 3·strength`; el hover muestra una píldora con el motivo. Leyenda en una `Card` translúcida abajo a la izquierda, miga de pan y herramientas en píldoras arriba, minimapa abajo a la derecha (sólo desde `md`). **Panel**: lateral `w-96` desde `md`, hoja inferior (`rounded-t-card`, máx. 62 % de alto) en mobile. Tema de React Flow sobreescrito con tokens en `index.css` (`.mv-flow`). |
 | `/discover` | `DiscoverPage` | `PageHeader` + botón "Refrescar" (`secondary`, ícono que gira mientras actualiza). Aviso de fallback/degradado en una `Card` `solid`. Tres `RecommendationSection` (ícono en círculo violeta + `h2` display + descripción + `MovieGrid` con un `Disclosure` "¿Por qué?" por card); una sección vacía muestra un texto en un recuadro punteado. Todo vacío: `EmptyState` con CTA a Buscar. |
 
 ## 5. Cómo armar una pantalla nueva

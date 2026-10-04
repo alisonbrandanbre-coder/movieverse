@@ -182,29 +182,43 @@ Siempre del usuario autenticado. Toda la lógica vive en `RecommendationService`
 # Graph
 
 ```text
-GET /graph/movies/{id}
 GET /graph/movies/{id}?limit=12
 ```
 
-Respuesta:
+Vecindario de una película en el mapa cinematográfico, armado por `GraphService` (sin base de grafos). `limit` es opcional, de 1 a 12 (12 por defecto); fuera de rango → `400 VALIDATION_ERROR`. Id inexistente → `404 MOVIE_NOT_FOUND`. Requiere JWT y usa el throttle `tmdb`.
 
 ```json
 {
   "center": 1,
   "nodes": [
-    {"id": 1, "title": "Interstellar"},
-    {"id": 2, "title": "Inception"}
+    {"id": 1, "tmdb_id": 157336, "title": "Interstellar", "poster": "https://image.tmdb.org/t/p/w500/...",
+     "year": 2014, "score": 8.5, "overview": "Un grupo de exploradores…"},
+    {"id": 191, "tmdb_id": 27205, "title": "Origen", "poster": "...", "year": 2010, "score": 8.4, "overview": "…"}
   ],
   "edges": [
     {
       "source": 1,
-      "target": 2,
+      "target": 191,
       "type": "DIRECTOR",
-      "label": "Christopher Nolan"
+      "types": ["DIRECTOR", "GENRE"],
+      "label": "Dirigidas por Christopher Nolan · Comparten Aventura y Ciencia ficción",
+      "reasons": [
+        {"type": "DIRECTOR", "label": "Dirigidas por Christopher Nolan"},
+        {"type": "GENRE", "label": "Comparten Aventura y Ciencia ficción"}
+      ],
+      "strength": 1.0
     }
-  ]
+  ],
+  "degraded": false
 }
 ```
+
+- `nodes`: el centro primero y después cada vecino una sola vez. `score` es la nota de TMDB (`null` sin votos). `overview` viene recortado a ~280 caracteres.
+- `edges`: una por vecino, siempre desde `center`. Si una película se conecta por varios motivos, va **una sola arista** que los combina: `type` es el más fuerte, `types` y `reasons` los listan todos y `label` los une con " · ".
+- Tipos y `strength`: `DIRECTOR` 1,00 (mismo director) · `ACTOR` 0,90 (comparten uno de los 5 actores principales, y también es principal en la otra) · `SIMILAR` 0,80 (TMDB *recommendations* / *similar*) · `GENRE` 0,60 con 2 o más géneros compartidos, 0,35 con uno. Cada motivo extra suma 0,05 (máximo 1,0).
+- Orden: `strength` y, a igual fuerza, mejor nota ponderada.
+- Diversidad: ningún tipo ocupa más de la mitad de las aristas, las que sólo comparten género no pasan de un tercio y una misma persona aporta como mucho 4 películas. Los topes sólo se relajan para llegar a 8 aristas.
+- `degraded: true` → TMDB falló sin caché para alguna fuente: se responde 200 con lo que haya.
 
 # Interactions
 
