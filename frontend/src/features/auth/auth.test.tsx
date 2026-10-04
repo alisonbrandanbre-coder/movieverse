@@ -13,10 +13,10 @@ describe("LoginPage", () => {
     mockFetch({});
     renderWithProviders(<AppRoutes />, { route: "/login" });
 
-    expect(screen.getByRole("heading", { name: "Iniciar sesión" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Iniciá sesión" })).toBeInTheDocument();
     expect(screen.getByLabelText("Email")).toBeInTheDocument();
     expect(screen.getByLabelText("Contraseña")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Iniciar sesión" })).toBeEnabled();
+    expect(screen.getByRole("button", { name: "Entrar al universo" })).toBeEnabled();
   });
 
   it("validates fields before calling the API", async () => {
@@ -24,7 +24,7 @@ describe("LoginPage", () => {
     renderWithProviders(<AppRoutes />, { route: "/login" });
 
     await userEvent.type(screen.getByLabelText("Email"), "no-es-email");
-    await userEvent.click(screen.getByRole("button", { name: "Iniciar sesión" }));
+    await userEvent.click(screen.getByRole("button", { name: "Entrar al universo" }));
 
     expect(await screen.findByText("Ingresá un email válido")).toBeInTheDocument();
     expect(screen.getByText("Ingresá tu contraseña")).toBeInTheDocument();
@@ -39,7 +39,7 @@ describe("LoginPage", () => {
 
     await userEvent.type(screen.getByLabelText("Email"), "ana@example.com");
     await userEvent.type(screen.getByLabelText("Contraseña"), "incorrecta");
-    await userEvent.click(screen.getByRole("button", { name: "Iniciar sesión" }));
+    await userEvent.click(screen.getByRole("button", { name: "Entrar al universo" }));
 
     expect(await screen.findByRole("alert")).toHaveTextContent("Email o contraseña incorrectos.");
     expect(session.hasSession()).toBe(false);
@@ -53,7 +53,7 @@ describe("LoginPage", () => {
 
     await userEvent.type(screen.getByLabelText("Email"), "ana@example.com");
     await userEvent.type(screen.getByLabelText("Contraseña"), "Cinefilo-2026!");
-    await userEvent.click(screen.getByRole("button", { name: "Iniciar sesión" }));
+    await userEvent.click(screen.getByRole("button", { name: "Entrar al universo" }));
 
     expect(await screen.findByRole("heading", { name: "Descubrir" })).toBeInTheDocument();
     expect(session.getAccessToken()).toBe("a");
@@ -95,7 +95,7 @@ describe("ProtectedRoute", () => {
     mockFetch({});
     renderWithProviders(<AppRoutes />, { route: "/profile" });
 
-    expect(await screen.findByRole("heading", { name: "Iniciar sesión" })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "Iniciá sesión" })).toBeInTheDocument();
   });
 
   it("renders the private page when the session is valid", async () => {
@@ -130,7 +130,7 @@ describe("ProtectedRoute", () => {
     });
     renderWithProviders(<AppRoutes />, { route: "/profile", authenticated: true });
 
-    expect(await screen.findByRole("heading", { name: "Iniciar sesión" })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "Iniciá sesión" })).toBeInTheDocument();
     await waitFor(() => expect(session.hasSession()).toBe(false));
   });
 });

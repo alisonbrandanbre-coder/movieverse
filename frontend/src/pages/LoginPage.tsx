@@ -1,6 +1,6 @@
 import { Link, useLocation, useNavigate } from "react-router";
 
-import { PageContainer } from "@/components/layout/PageContainer";
+import { AuthLayout } from "@/components/layout/AuthLayout";
 import { LoginForm } from "@/features/auth/components/LoginForm";
 
 function redirectTarget(state: unknown): string {
@@ -15,15 +15,19 @@ export function LoginPage() {
   const location = useLocation();
 
   return (
-    <PageContainer className="max-w-md py-16">
-      <h1 className="mb-6 text-2xl font-bold text-white">Iniciar sesión</h1>
+    <AuthLayout
+      title="Iniciá sesión"
+      subtitle="Tu universo te está esperando."
+      footer={
+        <>
+          ¿No tenés cuenta?{" "}
+          <Link to="/register" className="font-semibold text-violet-soft hover:underline">
+            Creá tu cuenta
+          </Link>
+        </>
+      }
+    >
       <LoginForm onSuccess={() => navigate(redirectTarget(location.state), { replace: true })} />
-      <p className="mt-6 text-sm text-slate-400">
-        ¿No tenés cuenta?{" "}
-        <Link to="/register" className="text-violet-400 hover:underline">
-          Registrate
-        </Link>
-      </p>
-    </PageContainer>
+    </AuthLayout>
   );
 }

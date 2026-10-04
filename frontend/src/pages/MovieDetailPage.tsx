@@ -21,17 +21,6 @@ export function MovieDetailPage() {
   const isValidId = Number.isInteger(movieId) && movieId > 0;
   const movie = useMovie(movieId);
 
-  const backButton = (
-    <button
-      type="button"
-      onClick={() => navigate(-1)}
-      className="mx-auto mt-4 flex w-full max-w-6xl items-center gap-2 px-4 text-sm text-slate-400 hover:text-white"
-    >
-      <ArrowLeft className="size-4" aria-hidden />
-      Volver
-    </button>
-  );
-
   if (!isValidId) return <MovieNotFound />;
   if (movie.isPending) return <LoadingState label="Cargando película…" />;
   if (movie.isError) {
@@ -47,16 +36,19 @@ export function MovieDetailPage() {
 
   const { data } = movie;
   return (
-    <article>
-      {backButton}
+    <article className="relative">
+      <div className="absolute inset-x-0 top-5 z-10 mx-auto max-w-6xl px-4 sm:px-6">
+        <button
+          type="button"
+          onClick={() => navigate(-1)}
+          className="flex items-center gap-2 rounded-control border border-line bg-deep/60 px-3 py-1.5 text-sm font-semibold text-fg-secondary backdrop-blur-md hover:border-focus hover:text-fg focus-visible:outline-2 focus-visible:outline-focus"
+        >
+          <ArrowLeft className="size-4" aria-hidden />
+          Volver
+        </button>
+      </div>
       <MovieHero movie={data} />
-      <PageContainer className="flex flex-col gap-10">
-        <section aria-labelledby="overview-heading">
-          <h2 id="overview-heading" className="mb-2 text-lg font-semibold text-white">
-            Sinopsis
-          </h2>
-          <p className="max-w-3xl leading-relaxed text-slate-300">{data.overview || "Sin sinopsis disponible."}</p>
-        </section>
+      <PageContainer>
         <MovieCreditsSection movieId={data.id} />
       </PageContainer>
     </article>

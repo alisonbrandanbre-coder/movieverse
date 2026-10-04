@@ -2,7 +2,9 @@ import { Search } from "lucide-react";
 import { useEffect, useState, type FormEvent } from "react";
 import { useSearchParams } from "react-router";
 
-import { PageContainer } from "@/components/layout/PageContainer";
+import { PageContainer, PageHeader } from "@/components/layout/PageContainer";
+import { Button } from "@/components/ui/Button";
+import { Input } from "@/components/ui/Input";
 import { SearchResults } from "@/features/movies/components/SearchResults";
 import { useDebouncedValue } from "@/hooks/useDebouncedValue";
 
@@ -40,17 +42,19 @@ export function SearchPage() {
   }
 
   return (
-    <PageContainer className="flex flex-col gap-8">
-      <form role="search" onSubmit={handleSubmit} className="flex flex-col gap-3">
-        <h1 className="text-2xl font-bold text-white">Buscar películas</h1>
-        <div className="flex gap-2">
+    <PageContainer className="flex flex-col gap-10">
+      <form role="search" onSubmit={handleSubmit} className="flex flex-col gap-6">
+        <PageHeader eyebrow="Explorar" title="Buscar películas" />
+        <div className="flex flex-col gap-3 sm:flex-row">
           <label htmlFor="movie-search" className="sr-only">
             Título de la película
           </label>
-          <div className="relative flex-1">
-            <Search className="pointer-events-none absolute left-3 top-1/2 size-5 -translate-y-1/2 text-slate-500" aria-hidden />
-            <input
+          <div className="flex-1">
+            <Input
               id="movie-search"
+              icon={Search}
+              inputSize="lg"
+              emphasis
               type="search"
               autoFocus
               autoComplete="off"
@@ -58,15 +62,11 @@ export function SearchPage() {
               value={input}
               onChange={(event) => setInput(event.target.value)}
               placeholder="Ej.: Interstellar"
-              className="w-full rounded-lg border border-slate-700 bg-slate-900 py-3 pl-10 pr-3 text-slate-100 placeholder:text-slate-500 focus:outline-2 focus:outline-violet-400"
             />
           </div>
-          <button
-            type="submit"
-            className="rounded-lg bg-violet-500 px-5 font-medium text-white hover:bg-violet-400 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-violet-400"
-          >
+          <Button type="submit" size="lg">
             Buscar
-          </button>
+          </Button>
         </div>
       </form>
       <SearchResults query={urlQuery} page={page} onPageChange={handlePageChange} />

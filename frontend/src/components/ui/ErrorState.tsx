@@ -10,10 +10,12 @@ interface ErrorStateProps {
 
 export function ErrorState({ title = "Algo salió mal", message, onRetry }: ErrorStateProps) {
   return (
-    <div role="alert" className="mx-auto flex max-w-md flex-col items-center gap-3 py-16 text-center">
-      <TriangleAlert className="size-10 text-amber-400" aria-hidden />
-      <h2 className="text-lg font-semibold text-slate-100">{title}</h2>
-      <p className="text-sm text-slate-400">{message}</p>
+    <div role="alert" className="mx-auto flex max-w-md flex-col items-center gap-4 py-16 text-center">
+      <div className="flex size-18 items-center justify-center rounded-full border border-danger-strong/40 bg-danger-strong/10">
+        <TriangleAlert className="size-8 text-danger" aria-hidden />
+      </div>
+      <h2 className="font-display text-3xl tracking-wide text-fg">{title}</h2>
+      <p className="text-fg-secondary">{message}</p>
       {onRetry && (
         <Button variant="secondary" onClick={onRetry}>
           Reintentar

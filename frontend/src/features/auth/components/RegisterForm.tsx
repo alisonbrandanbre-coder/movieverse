@@ -31,7 +31,7 @@ export function RegisterForm({ onSuccess }: { onSuccess: () => void }) {
   const passwordServerError = serverFieldError(mutation.error, "password");
 
   return (
-    <form noValidate onSubmit={handleSubmit((values) => mutation.mutate(values))} className="flex flex-col gap-4">
+    <form noValidate onSubmit={handleSubmit((values) => mutation.mutate(values))} className="flex flex-col gap-5">
       <TextField
         label="Email"
         type="email"
@@ -54,11 +54,11 @@ export function RegisterForm({ onSuccess }: { onSuccess: () => void }) {
         {...register("confirmPassword")}
       />
       {mutation.isError && !passwordServerError && (
-        <p role="alert" className="rounded-lg bg-rose-500/10 px-3 py-2 text-sm text-rose-300">
+        <p role="alert" className="rounded-control border border-danger-strong/40 bg-danger-strong/10 px-4 py-2.5 text-sm text-danger">
           {getErrorMessage(mutation.error, "No pudimos crear tu cuenta.")}
         </p>
       )}
-      <Button type="submit" disabled={mutation.isPending}>
+      <Button type="submit" size="lg" className="mt-1 w-full" disabled={mutation.isPending}>
         {mutation.isPending ? "Creando cuenta…" : "Crear cuenta"}
       </Button>
     </form>

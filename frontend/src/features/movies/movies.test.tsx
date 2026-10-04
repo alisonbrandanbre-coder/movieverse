@@ -117,7 +117,8 @@ describe("MovieDetailPage", () => {
     });
     renderWithProviders(<AppRoutes />, { route: "/movies/1", authenticated: true });
 
-    expect(await screen.findByRole("heading", { level: 1, name: /Interstellar/ })).toHaveTextContent("(2014)");
+    expect(await screen.findByRole("heading", { level: 1, name: "Interstellar" })).toBeInTheDocument();
+    expect(screen.getByText("2014")).toBeInTheDocument();
     expect(screen.getByText("2 h 49 min")).toBeInTheDocument();
     expect(screen.getByLabelText("Puntuación 8.4 de 10")).toBeInTheDocument();
     expect(screen.getByText("Ciencia ficción")).toBeInTheDocument();

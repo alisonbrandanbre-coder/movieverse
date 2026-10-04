@@ -1,11 +1,150 @@
 @import "tailwindcss";
 
-:root {
-  color-scheme: dark;
-  font-family: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+/*
+ * MovieVerse design tokens — see docs/DESIGN_SYSTEM.md.
+ * The default Tailwind palette is disabled on purpose: only these colors exist,
+ * so a stray `bg-slate-900` simply renders nothing and is caught in review.
+ */
+@theme {
+  --color-*: initial;
+
+  --color-white: #ffffff;
+  --color-black: #000000;
+
+  /* Backgrounds: night blue, never black. */
+  --color-deep: #0b1238;
+  --color-base: #0e1543;
+  --color-raised: #141b52;
+  --color-surface: rgb(22 28 82 / 0.62);
+
+  /* Borders. */
+  --color-line: rgb(140 160 255 / 0.22);
+  --color-line-strong: rgb(140 160 255 / 0.38);
+  --color-focus: #a98dff;
+
+  /* Text. */
+  --color-fg: #eef2ff;
+  --color-fg-secondary: #c3ccf0;
+  --color-fg-muted: #a9b4e0;
+  --color-label: #9fc0ff;
+
+  /* Accents. Gold only for ratings and stars. */
+  --color-blue: #4f7dff;
+  --color-violet: #8b5cff;
+  --color-violet-light: #a98dff;
+  --color-violet-soft: #b39bff;
+  --color-gold: #f5c76b;
+  --color-crawl: #e9d7a0;
+
+  /* Feedback. */
+  --color-danger: #ff9db3;
+  --color-danger-strong: #f0517a;
+
+  --font-sans: "Manrope", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-display: "Bebas Neue", "Manrope", system-ui, sans-serif;
+  --font-crawl: "Barlow Condensed", "Manrope", system-ui, sans-serif;
+
+  /* `text-base` is the background color above, so 16px text is `text-md`. */
+  --text-md: 1rem;
+  --text-md--line-height: 1.5rem;
+
+  --radius-control: 12px;
+  --radius-poster: 14px;
+  --radius-card: 20px;
+
+  --shadow-glow: 0 10px 28px -10px rgb(139 92 255 / 0.65);
+  --shadow-glow-strong: 0 0 0 1px rgb(169 141 255 / 0.55), 0 18px 44px -12px rgb(139 92 255 / 0.6);
+  --shadow-halo: 0 0 0 4px rgb(169 141 255 / 0.16), 0 0 36px -6px rgb(139 92 255 / 0.55);
+  --shadow-poster: 0 18px 40px -16px rgb(4 7 30 / 0.9);
+  --shadow-card: 0 30px 80px -30px rgb(4 7 30 / 0.95);
+  --shadow-comet: 0 0 10px 3px rgb(179 155 255 / 0.85);
+
+  --animate-twinkle: twinkle 4s ease-in-out infinite alternate;
+  --animate-fade-up: fade-up 0.6s ease-out both;
+  --animate-float: float 14s ease-in-out infinite alternate;
+  --animate-comet: comet 9s linear infinite;
+  --animate-intro-logo: intro-logo 1.1s ease-out both;
+  --animate-intro-crawl: intro-crawl 2.1s linear 0.9s both;
+  --animate-intro-out: intro-out 0.25s ease-in 2.75s forwards;
+
+  @keyframes twinkle {
+    from { opacity: 0.45; }
+    to { opacity: 1; }
+  }
+  @keyframes fade-up {
+    from { opacity: 0; transform: translateY(12px); }
+    to { opacity: 1; transform: none; }
+  }
+  @keyframes float {
+    from { transform: translate3d(0, 0, 0); }
+    to { transform: translate3d(-18px, 26px, 0); }
+  }
+  /* Crosses in the first ~15% of the cycle, then waits off-screen. */
+  @keyframes comet {
+    0% { transform: translate3d(-15vw, -10vh, 0) rotate(28deg); opacity: 0; }
+    2% { opacity: 1; }
+    13% { opacity: 1; }
+    16%, 100% { transform: translate3d(95vw, 95vh, 0) rotate(28deg); opacity: 0; }
+  }
+  @keyframes intro-logo {
+    0% { transform: scale(0.4); opacity: 0; }
+    35% { transform: scale(1); opacity: 1; }
+    70% { transform: scale(1.08); opacity: 1; }
+    100% { transform: scale(1.7); opacity: 0; }
+  }
+  @keyframes intro-crawl {
+    0% { transform: rotateX(26deg) translate3d(0, 45vh, 0); opacity: 0; }
+    12% { opacity: 1; }
+    85% { opacity: 1; }
+    100% { transform: rotateX(26deg) translate3d(0, -70vh, -200px); opacity: 0; }
+  }
+  @keyframes intro-out {
+    to { opacity: 0; }
+  }
 }
 
-body {
-  margin: 0;
-  background-color: var(--color-slate-950);
+@layer base {
+  :root {
+    color-scheme: dark;
+  }
+
+  body {
+    margin: 0;
+    background-color: var(--color-base);
+    color: var(--color-fg);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  ::selection {
+    background-color: rgb(139 92 255 / 0.45);
+  }
+}
+
+/* Small uppercase label above titles ("EXPLORAR", "TU MAPA ESTELAR DEL CINE"). */
+@utility eyebrow {
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 4px;
+  text-transform: uppercase;
+  color: var(--color-label);
+}
+
+/* Primary brand gradient (buttons, poster placeholder, logo stripes). */
+@utility bg-brand {
+  background-image: linear-gradient(90deg, var(--color-blue), var(--color-violet));
+}
+
+/* The floating blue planet in SpaceBackground. */
+@utility planet {
+  background-image: radial-gradient(circle at 32% 30%, var(--color-label), var(--color-blue) 38%, var(--color-raised) 78%);
+  box-shadow: 0 0 60px -6px rgb(79 125 255 / 0.55), inset -14px -18px 30px rgb(11 18 56 / 0.85);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }

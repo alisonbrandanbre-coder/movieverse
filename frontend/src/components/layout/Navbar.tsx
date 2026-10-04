@@ -1,7 +1,8 @@
-import { Compass, LogOut, Menu, Orbit, Search, User, X } from "lucide-react";
+import { Compass, LogOut, Menu, Search, User, X } from "lucide-react";
 import { useState } from "react";
 import { Link, NavLink, useNavigate } from "react-router";
 
+import { Logo } from "@/components/brand/Logo";
 import { useAuth } from "@/features/auth/useAuth";
 
 const PRIVATE_LINKS = [
@@ -11,11 +12,14 @@ const PRIVATE_LINKS = [
 ];
 
 function navLinkClass({ isActive }: { isActive: boolean }): string {
-  return `flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
-    isActive ? "bg-slate-800 text-white" : "text-slate-300 hover:bg-slate-800/60 hover:text-white"
+  return `flex items-center gap-2 rounded-control px-3.5 py-2 text-sm font-semibold transition-colors focus-visible:outline-2 focus-visible:outline-focus ${
+    isActive
+      ? "bg-violet/20 text-fg shadow-[inset_0_-2px_0_var(--color-violet-light)]"
+      : "text-fg-secondary hover:bg-violet/10 hover:text-fg"
   }`;
 }
 
+/** Translucent header. Shows the nav only with a session; the auth screens get just the logo. */
 export function Navbar() {
   const { status, logout } = useAuth();
   const navigate = useNavigate();
@@ -28,7 +32,7 @@ export function Navbar() {
     navigate("/login", { replace: true });
   }
 
-  const links = isAuthenticated ? (
+  const links = (
     <>
       {PRIVATE_LINKS.map(({ to, label, icon: Icon }) => (
         <NavLink key={to} to={to} className={navLinkClass} onClick={() => setOpen(false)}>
@@ -41,40 +45,30 @@ export function Navbar() {
         Salir
       </button>
     </>
-  ) : (
-    <>
-      <NavLink to="/login" className={navLinkClass} onClick={() => setOpen(false)}>
-        Iniciar sesión
-      </NavLink>
-      <NavLink
-        to="/register"
-        onClick={() => setOpen(false)}
-        className="rounded-lg bg-violet-500 px-3 py-2 text-sm font-medium text-white hover:bg-violet-400"
-      >
-        Crear cuenta
-      </NavLink>
-    </>
   );
 
   return (
-    <header className="sticky top-0 z-20 border-b border-slate-800 bg-slate-950/90 backdrop-blur">
-      <nav aria-label="Principal" className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3">
-        <Link to={isAuthenticated ? "/discover" : "/"} className="flex items-center gap-2 text-lg font-bold text-white">
-          <Orbit className="size-6 text-violet-400" aria-hidden />
-          MovieVerse
+    <header className="sticky top-0 z-20 border-b border-line bg-base/70 backdrop-blur-lg">
+      <nav aria-label="Principal" className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3 sm:px-6">
+        <Link to={isAuthenticated ? "/discover" : "/login"} className="rounded-control focus-visible:outline-2 focus-visible:outline-focus">
+          <Logo />
         </Link>
-        <div className="hidden items-center gap-1 md:flex">{links}</div>
-        <button
-          type="button"
-          className="rounded-lg p-2 text-slate-300 hover:bg-slate-800 md:hidden"
-          aria-label={open ? "Cerrar menú" : "Abrir menú"}
-          aria-expanded={open}
-          onClick={() => setOpen((value) => !value)}
-        >
-          {open ? <X className="size-5" /> : <Menu className="size-5" />}
-        </button>
+        {isAuthenticated && (
+          <>
+            <div className="hidden items-center gap-1 md:flex">{links}</div>
+            <button
+              type="button"
+              className="rounded-control p-2 text-fg-secondary hover:bg-violet/10 md:hidden"
+              aria-label={open ? "Cerrar menú" : "Abrir menú"}
+              aria-expanded={open}
+              onClick={() => setOpen((value) => !value)}
+            >
+              {open ? <X className="size-5" /> : <Menu className="size-5" />}
+            </button>
+          </>
+        )}
       </nav>
-      {open && <div className="flex flex-col gap-1 border-t border-slate-800 px-4 py-3 md:hidden">{links}</div>}
+      {isAuthenticated && open && <div className="flex flex-col gap-1 border-t border-line px-4 py-3 md:hidden">{links}</div>}
     </header>
   );
 }

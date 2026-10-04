@@ -1,4 +1,4 @@
-import { SearchX } from "lucide-react";
+import { SearchX, Telescope } from "lucide-react";
 
 import { getErrorMessage } from "@/api/client";
 import { Button } from "@/components/ui/Button";
@@ -23,6 +23,7 @@ export function SearchResults({ query, page, onPageChange }: SearchResultsProps)
   if (trimmed.length < SEARCH_MIN_LENGTH) {
     return (
       <EmptyState
+        icon={Telescope}
         title="¿Qué querés ver hoy?"
         description={`Escribí al menos ${SEARCH_MIN_LENGTH} caracteres para buscar una película.`}
       />
@@ -52,7 +53,7 @@ export function SearchResults({ query, page, onPageChange }: SearchResultsProps)
 
   return (
     <div className={`flex flex-col gap-6 transition-opacity ${search.isPlaceholderData ? "opacity-60" : ""}`}>
-      <p className="text-sm text-slate-400" aria-live="polite">
+      <p className="text-sm text-fg-secondary" aria-live="polite">
         {totalResults.toLocaleString("es")} {totalResults === 1 ? "resultado" : "resultados"} para “{trimmed}”
       </p>
       <MovieGrid movies={results} />
@@ -61,7 +62,7 @@ export function SearchResults({ query, page, onPageChange }: SearchResultsProps)
           <Button variant="secondary" disabled={page <= 1} onClick={() => onPageChange(page - 1)}>
             Anterior
           </Button>
-          <span className="text-sm text-slate-400">
+          <span className="text-sm text-fg-muted">
             Página {page} de {totalPages}
           </span>
           <Button variant="secondary" disabled={page >= totalPages} onClick={() => onPageChange(page + 1)}>

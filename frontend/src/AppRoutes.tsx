@@ -3,7 +3,7 @@ import { Route, Routes } from "react-router";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { GuestRoute, ProtectedRoute } from "@/features/auth/ProtectedRoute";
 import { DiscoverPage } from "@/pages/DiscoverPage";
-import { HomePage } from "@/pages/HomePage";
+import { IntroPage } from "@/pages/IntroPage";
 import { LoginPage } from "@/pages/LoginPage";
 import { MovieDetailPage } from "@/pages/MovieDetailPage";
 import { NotFoundPage } from "@/pages/NotFoundPage";
@@ -14,8 +14,8 @@ import { SearchPage } from "@/pages/SearchPage";
 export function AppRoutes() {
   return (
     <Routes>
+      <Route index element={<IntroPage />} />
       <Route element={<AppLayout />}>
-        <Route index element={<HomePage />} />
         <Route element={<GuestRoute />}>
           <Route path="login" element={<LoginPage />} />
           <Route path="register" element={<RegisterPage />} />

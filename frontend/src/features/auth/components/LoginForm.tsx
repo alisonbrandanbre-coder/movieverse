@@ -20,7 +20,7 @@ export function LoginForm({ onSuccess }: { onSuccess: () => void }) {
   const mutation = useMutation({ mutationFn: login, onSuccess });
 
   return (
-    <form noValidate onSubmit={handleSubmit((values) => mutation.mutate(values))} className="flex flex-col gap-4">
+    <form noValidate onSubmit={handleSubmit((values) => mutation.mutate(values))} className="flex flex-col gap-5">
       <TextField label="Email" type="email" autoComplete="email" error={errors.email?.message} {...register("email")} />
       <TextField
         label="Contraseña"
@@ -30,12 +30,12 @@ export function LoginForm({ onSuccess }: { onSuccess: () => void }) {
         {...register("password")}
       />
       {mutation.isError && (
-        <p role="alert" className="rounded-lg bg-rose-500/10 px-3 py-2 text-sm text-rose-300">
+        <p role="alert" className="rounded-control border border-danger-strong/40 bg-danger-strong/10 px-4 py-2.5 text-sm text-danger">
           {getErrorMessage(mutation.error, "No pudimos iniciar sesión.")}
         </p>
       )}
-      <Button type="submit" disabled={mutation.isPending}>
-        {mutation.isPending ? "Ingresando…" : "Iniciar sesión"}
+      <Button type="submit" size="lg" className="mt-1 w-full" disabled={mutation.isPending}>
+        {mutation.isPending ? "Ingresando…" : "Entrar al universo"}
       </Button>
     </form>
   );
