@@ -9,6 +9,7 @@ pytestmark = pytest.mark.django_db
 FAVORITES_URL = "/api/v1/me/favorites"
 WATCHLIST_URL = "/api/v1/me/watchlist"
 WATCHED_URL = "/api/v1/me/watched"
+LIKES_URL = "/api/v1/me/likes"
 
 
 def interactions_url(movie_id: int) -> str:
@@ -44,6 +45,7 @@ def types_of(user, movie) -> set[str]:
         ("get", FAVORITES_URL),
         ("get", WATCHLIST_URL),
         ("get", WATCHED_URL),
+        ("get", LIKES_URL),
     ],
 )
 def test_interaction_endpoints_require_authentication(api_client, method, url):
@@ -290,6 +292,18 @@ def test_lists_return_movie_summaries_newest_first(auth_client, movie):
     assert first["release_year"] == 2014
     assert [m["title"] for m in auth_client.get(WATCHLIST_URL).json()["results"]] == ["Inception"]
     assert auth_client.get(WATCHED_URL).json()["results"] == []
+
+
+def test_likes_list_only_has_liked_movies(auth_client, movie):
+    inception = make_movie("Inception")
+    add(auth_client, movie.id, "LIKE")
+    add(auth_client, inception.id, "DISLIKE")
+    add(auth_client, inception.id, "FAVORITE")
+
+    body = auth_client.get(LIKES_URL).json()
+
+    assert [m["title"] for m in body["results"]] == ["Interstellar"]
+    assert body["total_results"] == 1
 
 
 def test_lists_are_paginated(auth_client):

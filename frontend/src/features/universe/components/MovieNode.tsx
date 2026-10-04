@@ -28,7 +28,8 @@ function MovieNodeView({ data }: NodeProps<MovieNodeType>) {
   const isSelected = movie.id === selectedId;
   const dimmed = highlighted !== null && !highlighted.has(movie.id);
 
-  const size = isRoot ? "w-40" : isFocus ? "w-32" : "w-24";
+  // Widths match NODE_SIZE / ROOT_SIZE in graph.ts (the layout keeps these boxes apart).
+  const size = isRoot ? "w-[150px]" : isFocus ? "w-[104px]" : "w-[90px]";
   const frame = isRoot
     ? "border-2 border-gold shadow-halo"
     : isFocus
@@ -52,15 +53,14 @@ function MovieNodeView({ data }: NodeProps<MovieNodeType>) {
       >
         <PosterImage src={movie.posterUrl} alt="" title={movie.title} className="w-full" />
       </button>
-      <div className="pointer-events-none flex w-[140%] flex-col items-center text-center">
-        <p
-          className={`line-clamp-2 leading-tight text-fg drop-shadow-[0_1px_6px_var(--color-deep)] ${
-            isRoot ? "font-display text-3xl tracking-wide" : "text-sm font-bold"
-          }`}
-        >
-          {movie.title}
-        </p>
-        {movie.year && <p className="text-xs text-fg-muted">{movie.year}</p>}
+      {/* A dark pill behind the title keeps it readable over edges and the dotted grid. */}
+      <div className="pointer-events-none flex w-[160%] flex-col items-center text-center">
+        <div className="flex max-w-full flex-col items-center rounded-control bg-deep/70 px-2 py-1 backdrop-blur-sm">
+          <p className={`line-clamp-2 leading-tight text-fg ${isRoot ? "font-display text-3xl tracking-wide" : "text-md font-bold"}`}>
+            {movie.title}
+          </p>
+          {movie.year && <p className="text-sm font-semibold text-fg-secondary">{movie.year}</p>}
+        </div>
       </div>
       <Handle type="source" position={Position.Bottom} style={HANDLE_STYLE} isConnectable={false} />
     </div>

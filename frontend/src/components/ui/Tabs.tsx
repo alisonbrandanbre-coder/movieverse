@@ -42,7 +42,14 @@ export function Tabs<T extends string>({ label, tabs, value, onChange, children 
 
   return (
     <div className="flex flex-col gap-6">
-      <div role="tablist" aria-label={label} onKeyDown={handleKeyDown} className="flex gap-1 overflow-x-auto border-b border-line">
+      {/* The base line is an inset shadow, not a border + negative margin: that overflowed by 1px
+          and Windows showed a vertical scrollbar. Tabs still scroll sideways on phones. */}
+      <div
+        role="tablist"
+        aria-label={label}
+        onKeyDown={handleKeyDown}
+        className="flex gap-1 overflow-x-auto overflow-y-hidden shadow-[inset_0_-1px_0_var(--color-line)] scrollbar-none"
+      >
         {tabs.map((tab, index) => {
           const selected = index === activeIndex;
           return (
@@ -58,7 +65,7 @@ export function Tabs<T extends string>({ label, tabs, value, onChange, children 
               aria-controls={`${baseId}-panel`}
               tabIndex={selected ? 0 : -1}
               onClick={() => onChange(tab.value)}
-              className={`-mb-px flex shrink-0 items-center gap-2 border-b-2 px-4 py-3 text-sm font-semibold transition-colors focus-visible:outline-2 focus-visible:outline-focus ${
+              className={`flex shrink-0 items-center gap-2 border-b-2 px-4 py-3 text-sm font-semibold transition-colors focus-visible:outline-2 focus-visible:outline-focus ${
                 selected ? "border-violet-light text-fg" : "border-transparent text-fg-secondary hover:text-fg"
               }`}
             >

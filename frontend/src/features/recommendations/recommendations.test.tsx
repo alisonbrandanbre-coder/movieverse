@@ -49,7 +49,7 @@ describe("DiscoverPage", () => {
     renderDiscover({ "GET /recommendations": () => jsonResponse(recommendations()) });
 
     const forYou = await screen.findByRole("region", { name: "Para vos" });
-    expect(within(forYou).getByRole("link", { name: /Primer/ })).toHaveAttribute("href", "/movies/10");
+    expect(within(forYou).getByRole("link", { name: /^Póster de Primer/ })).toHaveAttribute("href", "/movies/10");
     expect(within(screen.getByRole("region", { name: "Joyas para descubrir" })).getByText("Coherence")).toBeInTheDocument();
     expect(within(screen.getByRole("region", { name: "Continuá explorando" })).getByText("Contact")).toBeInTheDocument();
   });
@@ -82,7 +82,7 @@ describe("DiscoverPage", () => {
 
     await userEvent.click(await screen.findByRole("button", { name: /Refrescar/ }));
 
-    expect(await screen.findByRole("link", { name: /Moon/ })).toBeInTheDocument();
+    expect(await screen.findByRole("link", { name: /^Póster de Moon/ })).toBeInTheDocument();
     expect(screen.queryByText("Primer")).not.toBeInTheDocument();
     expect(screen.getByText("Recomendaciones actualizadas.")).toBeInTheDocument();
     expect(refreshed).toBe(true);
@@ -163,7 +163,7 @@ describe("DiscoverPage", () => {
     });
 
     const forYou = await screen.findByRole("region", { name: "Para vos" });
-    const links = within(forYou).getAllByRole("link").map((link) => link.textContent);
+    const links = within(forYou).getAllByRole("link", { name: /^Póster de/ }).map((link) => link.textContent);
     expect(links[0]).toContain("Zeta");
     expect(links[1]).toContain("Alfa");
     await waitFor(() => expect(screen.getByText("Texto A.")).toBeInTheDocument());

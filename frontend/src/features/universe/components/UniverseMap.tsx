@@ -8,6 +8,7 @@ import {
   useEdgesState,
   useNodesState,
   useReactFlow,
+  type FitViewOptions,
   type Node,
 } from "@xyflow/react";
 import { Eraser, Info, LocateFixed, Minus, Plus, TriangleAlert } from "lucide-react";
@@ -23,11 +24,11 @@ import { getNeighborhood, graphKeys } from "../api";
 import {
   connectionsOf,
   createMap,
-  LANDSCAPE_RING,
+  LANDSCAPE_ASPECT,
   MAX_ACTIVE_NODES,
   mergeNeighborhood,
+  NODE_SIZE,
   nodeId,
-  PORTRAIT_RING,
   visit,
   type ConnectionEdge as ConnectionEdgeType,
   type MovieNode as MovieNodeType,
@@ -41,9 +42,27 @@ import { NodePanel } from "./NodePanel";
 
 const NODE_TYPES = { movie: MovieNode };
 const EDGE_TYPES = { connection: ConnectionEdge };
-const FIT_OPTIONS = { padding: 0.18, duration: 700 };
-const FOCUS_ZOOM = 0.85;
-const FALLBACK_SIZE = { width: 96, height: 190 };
+// Room for the top bar (breadcrumb + tools) and the TMDB credit; the sides stay tight so
+// the initial zoom is close to 1 on desktop.
+// Wide screens leave the ring's bottom corners empty for the legend and the minimap; squarer
+// ones (tablets) keep room for them, and phones for the compact legend's row.
+const FIT_PADDING: FitViewOptions["padding"] = { top: "76px", bottom: "28px", left: "20px", right: "20px" };
+const SQUARE_FIT_PADDING: FitViewOptions["padding"] = { ...FIT_PADDING, bottom: "130px" };
+const PHONE_FIT_PADDING: FitViewOptions["padding"] = { top: "76px", bottom: "56px", left: "12px", right: "12px" };
+const SQUARE_ASPECT = 1.4;
+const MAX_FIT_ZOOM = 1.1; // few neighbors: don't blow posters up
+const FOCUS_ZOOM = 0.95;
+const FALLBACK_SIZE = { width: NODE_SIZE.poster, height: NODE_SIZE.height };
+const HEADER_HEIGHT = 64;
+
+/** Width / height of the area the map is fitted into: the ring takes the same shape. */
+function mapAspect(): number {
+  if (typeof window === "undefined" || !window.innerWidth || !window.innerHeight) return LANDSCAPE_ASPECT;
+  const width = window.innerWidth - 40;
+  const height = window.innerHeight - HEADER_HEIGHT - 104;
+  return Math.min(2.6, Math.max(0.4, width / Math.max(1, height)));
+}
+
 const FEEDBACK_MS = 4500;
 
 type Feedback = { text: string; tone: "info" | "error" } | null;
@@ -60,11 +79,17 @@ export function UniverseMap({ initial }: { initial: Neighborhood }) {
 function MapCanvas({ initial }: { initial: Neighborhood }) {
   const queryClient = useQueryClient();
   const flow = useReactFlow<MovieNodeType, ConnectionEdgeType>();
-  // Phones are portrait: a tall ring keeps posters bigger once the map is fitted.
-  const [shape] = useState(() =>
-    typeof window !== "undefined" && window.matchMedia?.("(max-width: 639px)").matches ? PORTRAIT_RING : LANDSCAPE_RING,
-  );
-  const start = useMemo(() => createMap(initial, shape), [initial, shape]);
+  // The first ring takes the screen's shape (phones get compact columns instead).
+  const [aspect] = useState(mapAspect);
+  const [fit] = useState<FitViewOptions>(() => ({
+    padding: window.matchMedia?.("(max-width: 639px)").matches
+      ? PHONE_FIT_PADDING
+      : aspect < SQUARE_ASPECT
+        ? SQUARE_FIT_PADDING
+        : FIT_PADDING,
+    maxZoom: MAX_FIT_ZOOM,
+  }));
+  const start = useMemo(() => createMap(initial, aspect), [initial, aspect]);
   const [nodes, setNodes, onNodesChange] = useNodesState<MovieNodeType>(start.nodes);
   const [edges, setEdges] = useEdgesState<ConnectionEdgeType>(start.edges);
   const rootId = initial.center;
@@ -175,14 +200,14 @@ function MapCanvas({ initial }: { initial: Neighborhood }) {
   }
 
   function clearMap() {
-    const fresh = createMap(initial, shape);
+    const fresh = createMap(initial, aspect);
     setNodes(fresh.nodes);
     setEdges(fresh.edges);
     setPath([rootId]);
     setExpanded(new Set([rootId]));
     setSelectedId(null);
     setFeedback({ text: "Mapa limpio: volviste al punto de partida.", tone: "info" });
-    window.setTimeout(() => void flow.fitView(FIT_OPTIONS), 80);
+    window.setTimeout(() => void flow.fitView({ ...fit, duration: 700 }), 80);
   }
 
   const selected = selectedId !== null ? movies.get(selectedId) : undefined;
@@ -207,7 +232,7 @@ function MapCanvas({ initial }: { initial: Neighborhood }) {
           nodesConnectable={false}
           elementsSelectable={false}
           fitView
-          fitViewOptions={{ padding: 0.18 }}
+          fitViewOptions={fit}
           minZoom={0.2}
           maxZoom={1.8}
           colorMode="dark"

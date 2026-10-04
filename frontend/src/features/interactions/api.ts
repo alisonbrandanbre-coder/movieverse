@@ -4,7 +4,7 @@ import { toSummary, type MovieSummaryDto } from "@/features/movies/api";
 import type {
   InteractionType,
   MovieInteractionState,
-  SavedListKind,
+  MovieListKind,
   SavedMoviesPage,
 } from "@/types/interactions";
 import type { Reaction } from "@/types/preferences";
@@ -27,7 +27,7 @@ interface SavedMoviesDto {
 export const interactionKeys = {
   movie: (movieId: number) => ["interactions", movieId] as const,
   lists: ["me"] as const,
-  list: (kind: SavedListKind, page: number) => ["me", kind, page] as const,
+  list: (kind: MovieListKind, page: number) => ["me", kind, page] as const,
 };
 
 function toState(dto: MovieInteractionStateDto): MovieInteractionState {
@@ -55,7 +55,7 @@ export async function setInteraction(
   return toState(dto);
 }
 
-export async function getSavedMovies(kind: SavedListKind, page: number, signal?: AbortSignal): Promise<SavedMoviesPage> {
+export async function getSavedMovies(kind: MovieListKind, page: number, signal?: AbortSignal): Promise<SavedMoviesPage> {
   const dto = await apiRequest<SavedMoviesDto>(`/me/${kind}`, { params: { page }, signal });
   return {
     page: dto.page,

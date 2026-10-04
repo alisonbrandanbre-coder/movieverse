@@ -1,4 +1,4 @@
-import { Compass, LogOut, Menu, Search, User, X } from "lucide-react";
+import { Compass, LogOut, Menu, Orbit, Search, User, X } from "lucide-react";
 import { useState } from "react";
 import { Link, NavLink, useNavigate } from "react-router";
 
@@ -8,6 +8,8 @@ import { useAuth } from "@/features/auth/useAuth";
 const PRIVATE_LINKS = [
   { to: "/search", label: "Buscar", icon: Search },
   { to: "/discover", label: "Descubrir", icon: Compass },
+  // NavLink also marks it active on /universe/:movieId (the map itself).
+  { to: "/universe", label: "Universo", icon: Orbit },
   { to: "/profile", label: "Mi perfil", icon: User },
 ];
 

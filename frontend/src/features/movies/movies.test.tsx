@@ -29,8 +29,10 @@ describe("MovieCard", () => {
       </MemoryRouter>,
     );
 
-    const link = screen.getByRole("link", { name: /Interstellar/ });
+    const link = screen.getByRole("link", { name: /^Póster de Interstellar/ });
     expect(link).toHaveAttribute("href", "/movies/1");
+    // The hover chip is its own link, straight to the movie's map.
+    expect(screen.getByRole("link", { name: "Explorar universo de Interstellar" })).toHaveAttribute("href", "/universe/1");
     expect(screen.getByRole("img", { name: "Póster de Interstellar" })).toHaveAttribute("src", "https://img/p.jpg");
     expect(screen.getByText("2014")).toBeInTheDocument();
     expect(screen.getByLabelText("Puntuación 8.4")).toBeInTheDocument();
@@ -46,6 +48,20 @@ describe("MovieCard", () => {
     expect(screen.getByRole("img", { name: "Póster de Sin datos" }).tagName).toBe("DIV");
     expect(screen.getByText("Sin fecha")).toBeInTheDocument();
     expect(screen.queryByLabelText(/Puntuación/)).not.toBeInTheDocument();
+  });
+
+  it("can lead straight to the movie's map (Universo start screen)", () => {
+    render(
+      <MemoryRouter>
+        <MovieCard
+          destination="universe"
+          movie={{ id: 3, tmdbId: 3, title: "Matrix", releaseYear: 1999, posterUrl: null, voteAverage: 8.2 }}
+        />
+      </MemoryRouter>,
+    );
+
+    expect(screen.getAllByRole("link")).toHaveLength(1);
+    expect(screen.getByRole("link", { name: "Explorar el universo de Matrix" })).toHaveAttribute("href", "/universe/3");
   });
 });
 

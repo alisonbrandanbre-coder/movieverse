@@ -13,7 +13,8 @@ export function AppLayout() {
 
   return (
     <div className={`relative isolate flex flex-col text-fg ${immersive ? "h-dvh overflow-hidden" : "min-h-screen"}`}>
-      <SpaceBackground planet={HERO_PLANET_ROUTES.includes(pathname) ? "hero" : "subtle"} />
+      {/* On the map the planets would cover its controls: only the stars stay. */}
+      <SpaceBackground planet={immersive ? "none" : HERO_PLANET_ROUTES.includes(pathname) ? "hero" : "subtle"} />
       <Navbar />
       <main className={immersive ? "relative min-h-0 flex-1" : "flex-1"}>
         <Outlet />

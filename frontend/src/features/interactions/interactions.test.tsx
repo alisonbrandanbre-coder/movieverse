@@ -117,7 +117,7 @@ describe("ProfilePage", () => {
     const favorites = await screen.findByRole("tab", { name: /Favoritas/ });
     expect(favorites).toHaveAttribute("aria-selected", "true");
     await waitFor(() => expect(favorites).toHaveTextContent("1"));
-    expect(await screen.findByRole("link", { name: /Interstellar/ })).toHaveAttribute("href", "/movies/1");
+    expect(await screen.findByRole("link", { name: /^Póster de Interstellar/ })).toHaveAttribute("href", "/movies/1");
 
     await userEvent.click(screen.getByRole("tab", { name: /Pendientes/ }));
     expect(await screen.findByText("No tenés pendientes")).toBeInTheDocument();

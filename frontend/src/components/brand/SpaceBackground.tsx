@@ -28,11 +28,59 @@ const STAR_LAYERS = [
   { size: 2, shadows: starShadows(22, 37), duration: "7s", delay: "-3s" },
 ];
 
-// Hero: big enough to show the artwork's detail (Login, Register, Intro). Subtle: small
-// and translucent so it doesn't compete with the posters.
-const PLANET_SIZES = {
-  hero: "right-[-20%] top-[9%] w-[15rem] opacity-35 sm:right-[-8%] sm:w-[22rem] sm:opacity-75 lg:right-[-5%] lg:top-[6%] lg:w-[420px] lg:opacity-100",
-  subtle: "right-[3%] top-[14%] w-28 opacity-40 sm:w-[180px] sm:opacity-55",
+interface PlanetSpec {
+  /** Position, size and opacity (Tailwind classes); keep them near the edges, away from the content column. */
+  className: string;
+  /** Turns the same artwork into a different-looking world (hue, saturation, rotation). */
+  look?: string;
+  /** Float cycle: different speeds so they don't move in sync. */
+  duration: string;
+  delay?: string;
+}
+
+// The same artwork, re-tinted and rotated, reads as a small solar system. Kept translucent and
+// mostly off the content column so posters and text always win.
+const MOONS: PlanetSpec[] = [
+  {
+    className: "left-[-3%] top-[52%] w-14 opacity-30 sm:left-[1.5%] sm:w-20 sm:opacity-40",
+    look: "-hue-rotate-30 saturate-75 rotate-[140deg]",
+    duration: "19s",
+    delay: "-6s",
+  },
+  {
+    className: "right-[6%] bottom-[6%] w-10 opacity-25 sm:w-16 sm:opacity-35",
+    look: "hue-rotate-60 saturate-50 rotate-[250deg]",
+    duration: "23s",
+    delay: "-11s",
+  },
+  {
+    className: "hidden left-[24%] top-[7%] w-9 opacity-30 blur-[0.5px] md:block",
+    look: "hue-rotate-180 saturate-50 rotate-[60deg]",
+    duration: "17s",
+    delay: "-3s",
+  },
+  {
+    className: "hidden left-[6%] bottom-[9%] w-7 opacity-25 blur-[1px] lg:block",
+    look: "hue-rotate-90 saturate-50 rotate-[300deg]",
+    duration: "21s",
+    delay: "-14s",
+  },
+];
+
+// Hero: big enough to show the artwork's detail (Login, Register, Intro), plus its moons.
+// Subtle: a smaller main planet and the moons, translucent so they don't compete with posters.
+// None: only the sky (the cinematic map, whose controls the planets would cover).
+const PLANETS: Record<"hero" | "subtle" | "none", PlanetSpec[]> = {
+  hero: [
+    {
+      className:
+        "right-[-20%] top-[9%] w-[15rem] opacity-35 sm:right-[-8%] sm:w-[22rem] sm:opacity-75 lg:right-[-5%] lg:top-[6%] lg:w-[420px] lg:opacity-100",
+      duration: "14s",
+    },
+    ...MOONS,
+  ],
+  subtle: [{ className: "right-[-9%] top-[14%] w-24 opacity-30 sm:right-[2%] sm:w-[150px] sm:opacity-50", duration: "14s" }, ...MOONS],
+  none: [],
 };
 
 const COMETS = [
@@ -42,8 +90,8 @@ const COMETS = [
 
 /**
  * The MovieVerse sky: three twinkling star layers, a blue and a violet glow,
- * comets crossing diagonally every ~9 s and a slowly floating planet
- * (`planet="hero"` on Login/Register/Intro, `"subtle"` everywhere else).
+ * comets crossing diagonally every ~9 s and a few slowly floating planets
+ * (`planet="hero"` on Login/Register/Intro, `"subtle"` everywhere else, `"none"` on the map).
  * Fixed behind the page content; purely decorative. With
  * `prefers-reduced-motion` nothing moves and the comets are hidden.
  */
@@ -51,7 +99,7 @@ export function SpaceBackground({
   planet = "subtle",
   className = "",
 }: {
-  planet?: keyof typeof PLANET_SIZES;
+  planet?: keyof typeof PLANETS;
   className?: string;
 }) {
   return (
@@ -73,14 +121,9 @@ export function SpaceBackground({
         />
       ))}
 
-      {/* The artwork's space background is already cut out (transparent WebP). */}
-      <img
-        src={planetUrl}
-        alt=""
-        loading="lazy"
-        decoding="async"
-        className={`absolute aspect-square animate-float drop-shadow-planet motion-reduce:animate-none ${PLANET_SIZES[planet]}`}
-      />
+      {PLANETS[planet].map((spec) => (
+        <Planet key={spec.className} spec={spec} />
+      ))}
 
       {COMETS.map((comet) => (
         <div
@@ -93,6 +136,28 @@ export function SpaceBackground({
           </div>
         </div>
       ))}
+    </div>
+  );
+}
+
+/**
+ * One world: the cut-out artwork (transparent WebP) with a night-side shadow on top, so a
+ * busy illustration reads as a lit sphere and stays quiet behind the content.
+ */
+function Planet({ spec }: { spec: PlanetSpec }) {
+  return (
+    <div
+      className={`absolute aspect-square animate-float motion-reduce:animate-none ${spec.className}`}
+      style={{ animationDuration: spec.duration, animationDelay: spec.delay }}
+    >
+      <img
+        src={planetUrl}
+        alt=""
+        loading="lazy"
+        decoding="async"
+        className={`size-full drop-shadow-planet ${spec.look ?? ""}`}
+      />
+      <div className="absolute inset-[7%] rounded-full bg-radial-[at_30%_28%] from-transparent from-35% to-deep/80" />
     </div>
   );
 }

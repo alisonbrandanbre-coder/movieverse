@@ -67,9 +67,10 @@ Para MVP se recomienda **React Flow** por simplicidad.
 
 Implementado en Sprint 4 (`/universe/:movieId`, React Flow / `@xyflow/react`):
 
-- La ficha lleva al mapa con "Explorar universo".
+- La ficha lleva al mapa con "Explorar universo", igual que el chip de las tarjetas de Buscar, Descubrir y Mi perfil.
+- "Universo" en el menú principal lleva a `/universe`: buscador para elegir la película de inicio, tus favoritas y «Me gusta» como punto de partida o, si no tenés, películas muy conocidas.
 - Fondo espacial con zoom, pan y minimapa discreto. En mobile el minimapa no se muestra.
-- Disposición radial (una elipse, apaisada en escritorio y vertical en teléfonos), con las conexiones más fuertes más cerca del centro.
+- Disposición radial (una elipse con la forma de la pantalla; en teléfonos, tres columnas compactas), sin superposiciones y con las conexiones más fuertes más cerca del centro. En escritorio los pósters se ven de ~90 px (vecinos) y ~150 px (centro).
 - Aristas con color por tipo (director dorado, actor azul, similar violeta, género gris azulado punteado) y grosor según la fuerza. Al pasar el mouse muestran una etiqueta corta.
 - Leyenda fija abajo a la izquierda.
 - Click en un nodo → panel lateral (hoja inferior en mobile) con póster, sinopsis, puntaje, motivos de cada conexión, "Ver ficha" y "Expandir desde acá".

@@ -29,4 +29,9 @@ urlpatterns = [
         MyMoviesView.as_view(interaction_type=InteractionType.WATCHED),
         name="me-watched",
     ),
+    path(
+        "me/likes",
+        MyMoviesView.as_view(interaction_type=InteractionType.LIKE),
+        name="me-likes",
+    ),
 ]

@@ -7,7 +7,9 @@ import {
   createMap,
   edgeId,
   mergeNeighborhood,
-  PORTRAIT_RING,
+  NODE_SIZE,
+  PORTRAIT_ASPECT,
+  ROOT_SIZE,
   shortLabel,
   visit,
   type MovieNode,
@@ -43,26 +45,53 @@ describe("createMap", () => {
 
   it("places stronger connections closer to the center", () => {
     const { nodes } = createMap(neighborhood(1, [[2, 1], [3, 0.35]]));
-    const center = nodes[0];
-    const strong = nodes.find((n) => n.id === "2")!;
-    const weak = nodes.find((n) => n.id === "3")!;
+    // Between box centers: the center node is bigger than its neighbors.
+    const middle = (n: MovieNode) => {
+      const size = n.id === "1" ? ROOT_SIZE : NODE_SIZE;
+      return { x: n.position.x + size.poster / 2, y: n.position.y + size.height / 2 };
+    };
+    const from = (id: string) => {
+      const a = middle(nodes[0]);
+      const b = middle(nodes.find((n) => n.id === id)!);
+      return Math.hypot(a.x - b.x, a.y - b.y);
+    };
 
-    expect(distance(center, strong)).toBeLessThan(distance(center, weak));
+    expect(from("2")).toBeLessThan(from("3"));
   });
 
-  it("keeps 12 neighbors apart (no overlapping posters), landscape and portrait", () => {
-    const twelve = neighborhood(1, Array.from({ length: 12 }, (_, i) => [i + 2, 1] as [number, number]));
-    for (const shape of [undefined, PORTRAIT_RING]) {
-      const { nodes } = createMap(twelve, shape);
-      for (let i = 1; i < nodes.length; i += 1) {
-        for (let j = i + 1; j < nodes.length; j += 1) {
-          const dx = Math.abs(nodes[i].position.x - nodes[j].position.x);
-          const dy = Math.abs(nodes[i].position.y - nodes[j].position.y);
-          // A node is ~140 wide (title) × ~200 tall (poster + title).
-          expect(dx >= 140 || dy >= 200).toBe(true);
+  it("keeps 8 to 12 neighbors apart and off the center (no overlapping posters or titles), on any screen", () => {
+    const box = (n: MovieNode) => {
+      const size = n.id === "1" ? ROOT_SIZE : NODE_SIZE;
+      return { left: n.position.x + (size.poster - size.width) / 2, top: n.position.y, ...size };
+    };
+    for (const count of [8, 10, 12]) {
+      const around = neighborhood(1, Array.from({ length: count }, (_, i) => [i + 2, 1 - i * 0.05] as [number, number]));
+      for (const aspect of [2.4, undefined, 1.2, PORTRAIT_ASPECT]) {
+        const { nodes } = createMap(around, aspect);
+        for (let i = 0; i < nodes.length; i += 1) {
+          for (let j = i + 1; j < nodes.length; j += 1) {
+            const a = box(nodes[i]);
+            const b = box(nodes[j]);
+            const apart =
+              a.left + a.width <= b.left || b.left + b.width <= a.left || a.top + a.height <= b.top || b.top + b.height <= a.top;
+            expect(apart).toBe(true);
+          }
         }
       }
     }
+  });
+
+  it("follows the screen's shape: a wide ring on desktop, a tall one on phones", () => {
+    const twelve = neighborhood(1, Array.from({ length: 12 }, (_, i) => [i + 2, 1] as [number, number]));
+    const extent = (aspect: number) => {
+      const { nodes } = createMap(twelve, aspect);
+      const xs = nodes.map((n) => n.position.x);
+      const ys = nodes.map((n) => n.position.y);
+      return (Math.max(...xs) - Math.min(...xs)) / (Math.max(...ys) - Math.min(...ys));
+    };
+
+    expect(extent(1.9)).toBeGreaterThan(1.5);
+    expect(extent(PORTRAIT_ASPECT)).toBeLessThan(1);
   });
 });
 

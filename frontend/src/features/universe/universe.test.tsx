@@ -206,3 +206,78 @@ describe("UniversePage", () => {
     expect(await nodeButton("Interstellar (2014)")).toBeInTheDocument();
   });
 });
+
+function summary(id: number, title: string) {
+  return { id, tmdb_id: 1000 + id, title, release_year: 2010, poster_url: null, vote_average: 8, added_at: "2026-10-01T10:00:00Z" };
+}
+
+function savedList(...movies: ReturnType<typeof summary>[]) {
+  return () => jsonResponse({ page: 1, total_pages: movies.length ? 1 : 0, total_results: movies.length, results: movies });
+}
+
+describe("UniverseStartPage", () => {
+  it("is in the main menu, active on the start screen and on the map", async () => {
+    renderMap({ "GET /graph/movies/1": () => jsonResponse(INTERSTELLAR) });
+
+    const nav = screen.getByRole("navigation", { name: "Principal" });
+    const item = await within(nav).findByRole("link", { name: "Universo" });
+    expect(item).toHaveAttribute("href", "/universe");
+    expect(item).toHaveAttribute("aria-current", "page");
+    const order = within(nav).getAllByRole("link").map((link) => link.textContent);
+    expect(order.indexOf("Universo")).toBe(order.indexOf("Descubrir") + 1);
+    expect(order.indexOf("Mi perfil")).toBe(order.indexOf("Universo") + 1);
+  });
+
+  it("starts from the user's favorites and likes, without repeats", async () => {
+    renderMap(
+      {
+        "GET /me/favorites": savedList(summary(1, "Interstellar"), summary(2, "Inception")),
+        "GET /me/likes": savedList(summary(2, "Inception"), summary(7, "Arrival")),
+      },
+      "/universe",
+    );
+
+    expect(await screen.findByRole("heading", { level: 1, name: "Explorá el universo" })).toBeInTheDocument();
+    const section = await screen.findByRole("region", { name: "Empezá desde tus favoritas" });
+    const links = within(section).getAllByRole("link");
+    expect(links.map((link) => link.getAttribute("href"))).toEqual(["/universe/1", "/universe/2", "/universe/7"]);
+    expect(within(section).getByRole("link", { name: "Explorar el universo de Arrival" })).toBeInTheDocument();
+  });
+
+  it("suggests well-known movies when the user has no favorites or likes", async () => {
+    renderMap(
+      {
+        "GET /me/favorites": savedList(),
+        "GET /me/likes": savedList(),
+        "GET /movies/onboarding-sample": () => jsonResponse({ results: [summary(40, "The Matrix"), summary(41, "Interstellar")] }),
+      },
+      "/universe",
+    );
+
+    const section = await screen.findByRole("region", { name: "Películas para empezar" });
+    expect(await within(section).findByRole("link", { name: "Explorar el universo de The Matrix" })).toHaveAttribute(
+      "href",
+      "/universe/40",
+    );
+  });
+
+  it("searches the starting movie and opens its map", async () => {
+    renderMap(
+      {
+        "GET /me/favorites": savedList(),
+        "GET /me/likes": savedList(),
+        "GET /movies/onboarding-sample": () => jsonResponse({ results: [] }),
+        "GET /movies/search": () =>
+          jsonResponse({ query: "inter", page: 1, total_pages: 1, total_results: 1, results: [summary(1, "Interstellar")] }),
+        "GET /graph/movies/1": () => jsonResponse(INTERSTELLAR),
+      },
+      "/universe",
+    );
+
+    await userEvent.type(await screen.findByRole("searchbox", { name: "Película de inicio" }), "inter");
+    const results = await screen.findByRole("region", { name: "Resultados" });
+    await userEvent.click(await within(results).findByRole("link", { name: "Explorar el universo de Interstellar" }));
+
+    expect(await nodeButton("Interstellar (2014)")).toBeInTheDocument();
+  });
+});

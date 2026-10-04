@@ -229,6 +229,7 @@ DELETE /movies/{id}/interactions/{type}
 GET    /me/favorites?page=
 GET    /me/watchlist?page=
 GET    /me/watched?page=
+GET    /me/likes?page=
 ```
 
 El usuario es siempre `request.user`; un `user_id` en el body se ignora.

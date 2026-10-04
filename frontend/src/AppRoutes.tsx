@@ -13,6 +13,7 @@ import { OnboardingPage } from "@/pages/OnboardingPage";
 import { ProfilePage } from "@/pages/ProfilePage";
 import { RegisterPage } from "@/pages/RegisterPage";
 import { SearchPage } from "@/pages/SearchPage";
+import { UniverseStartPage } from "@/pages/UniverseStartPage";
 import { StarsLoadingState } from "@/components/ui/StarsLoadingState";
 
 // The cinematic map brings React Flow: loaded only when the user opens it.
@@ -34,6 +35,7 @@ export function AppRoutes() {
           </Route>
           <Route path="search" element={<SearchPage />} />
           <Route path="movies/:id" element={<MovieDetailPage />} />
+          <Route path="universe" element={<UniverseStartPage />} />
           <Route
             path="universe/:movieId"
             element={

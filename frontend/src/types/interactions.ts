@@ -14,6 +14,9 @@ export interface MovieInteractionState {
 
 export type SavedListKind = "favorites" | "watchlist" | "watched";
 
+/** Every list under `/me/…`: the profile tabs plus the liked movies (Universo start screen). */
+export type MovieListKind = SavedListKind | "likes";
+
 export interface SavedMovie extends MovieSummary {
   addedAt: string;
 }

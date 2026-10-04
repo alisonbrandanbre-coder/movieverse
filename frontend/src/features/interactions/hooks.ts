@@ -1,7 +1,7 @@
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { recommendationKeys } from "@/features/recommendations/api";
-import type { InteractionType, MovieInteractionState, SavedListKind } from "@/types/interactions";
+import type { InteractionType, MovieInteractionState, MovieListKind } from "@/types/interactions";
 
 import { getMovieInteractions, getSavedMovies, interactionKeys, setInteraction } from "./api";
 
@@ -13,7 +13,7 @@ export function useMovieInteractions(movieId: number) {
   });
 }
 
-export function useSavedMovies(kind: SavedListKind, page: number) {
+export function useSavedMovies(kind: MovieListKind, page: number) {
   return useQuery({
     queryKey: interactionKeys.list(kind, page),
     queryFn: ({ signal }) => getSavedMovies(kind, page, signal),
