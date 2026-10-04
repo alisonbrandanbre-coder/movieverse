@@ -56,20 +56,22 @@ class Connection:
     similar: bool = False
     shared_genres: list[str] = field(default_factory=list)
 
-    def reasons(self) -> list[tuple[str, float, str]]:
-        """(type, strength, readable label), strongest first."""
+    def reasons(self) -> list[tuple[str, float, str, str]]:
+        """(type, strength, readable label, short label for the map's chip), strongest first."""
         found = []
         if self.directors:
-            found.append(
-                (DIRECTOR, STRENGTH[DIRECTOR], "Dirigidas por " + _join(self.directors.values()))
-            )
+            names = list(self.directors.values())
+            found.append((DIRECTOR, STRENGTH[DIRECTOR], "Dirigidas por " + _join(names), names[0]))
         if self.actors:
-            found.append((ACTOR, STRENGTH[ACTOR], "Ambas con " + _join(self.actors.values())))
+            names = list(self.actors.values())
+            found.append((ACTOR, STRENGTH[ACTOR], "Ambas con " + _join(names), names[0]))
         if self.similar:
-            found.append((SIMILAR, STRENGTH[SIMILAR], "Similares según TMDB"))
+            found.append((SIMILAR, STRENGTH[SIMILAR], "Similares según TMDB", "Similar"))
         if self.shared_genres:
             strength = GENRE_STRENGTH_MULTI if len(self.shared_genres) >= 2 else GENRE_STRENGTH_ONE
-            found.append((GENRE, strength, "Comparten " + _join(self.shared_genres)))
+            found.append(
+                (GENRE, strength, "Comparten " + _join(self.shared_genres), self.shared_genres[0])
+            )
         return sorted(found, key=lambda r: (-r[1], TYPE_ORDER.index(r[0])))
 
     @property

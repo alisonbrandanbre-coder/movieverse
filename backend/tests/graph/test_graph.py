@@ -184,7 +184,7 @@ def test_every_edge_has_type_label_and_strength(auth_client, interstellar, tmdb)
         assert edge["type"] in {"DIRECTOR", "ACTOR", "SIMILAR", "GENRE"}
         assert edge["type"] == edge["types"][0]
         assert edge["label"].strip()
-        assert all(r["type"] and r["label"] for r in edge["reasons"])
+        assert all(r["type"] and r["label"] and r["short"] for r in edge["reasons"])
         assert 0 < edge["strength"] <= 1
 
 
@@ -241,15 +241,23 @@ def test_readable_and_verifiable_labels(auth_client, interstellar, tmdb):
     assert edges["Inception"]["reasons"][0] == {
         "type": "DIRECTOR",
         "label": "Dirigidas por Christopher Nolan",
+        "short": "Christopher Nolan",
     }
     assert edges["Dallas Buyers Club"]["reasons"][0] == {
         "type": "ACTOR",
         "label": "Ambas con Matthew McConaughey",
+        "short": "Matthew McConaughey",
     }
-    assert edges["Gravity"]["reasons"][0] == {"type": "SIMILAR", "label": "Similares según TMDB"}
-    assert {"type": "GENRE", "label": "Comparten Aventura, Ciencia ficción y Drama"} in edges[
-        "The Martian"
-    ]["reasons"]
+    assert edges["Gravity"]["reasons"][0] == {
+        "type": "SIMILAR",
+        "label": "Similares según TMDB",
+        "short": "Similar",
+    }
+    assert {
+        "type": "GENRE",
+        "label": "Comparten Aventura, Ciencia ficción y Drama",
+        "short": "Aventura",
+    } in edges["The Martian"]["reasons"]
 
 
 def test_strengths_by_type(auth_client, interstellar, tmdb, genres):
@@ -433,5 +441,9 @@ def test_local_credits_also_connect(auth_client, interstellar, tmdb, genres):
     edges = edges_by_title(auth_client.get(url(interstellar.pk)).json())
 
     assert edges["Following"]["reasons"] == [
-        {"type": "DIRECTOR", "label": "Dirigidas por Christopher Nolan"}
+        {
+            "type": "DIRECTOR",
+            "label": "Dirigidas por Christopher Nolan",
+            "short": "Christopher Nolan",
+        }
     ]

@@ -32,6 +32,8 @@
 
   /* Accents. Gold only for ratings and stars. */
   --color-blue: #4f7dff;
+  /* Light sky blue: actor connections on the map (clearly apart from the violets). */
+  --color-sky: #6cc9ff;
   --color-violet: #8b5cff;
   --color-violet-light: #a98dff;
   --color-violet-soft: #b39bff;

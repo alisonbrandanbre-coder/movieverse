@@ -41,9 +41,12 @@ def serialize_neighborhood(result: Neighborhood) -> dict:
                 "source": center.pk,
                 "target": c.movie.pk,
                 "type": c.primary_type,
-                "types": [kind for kind, _, _ in c.reasons()],
-                "label": " · ".join(label for _, _, label in c.reasons()),
-                "reasons": [{"type": kind, "label": label} for kind, _, label in c.reasons()],
+                "types": [kind for kind, *_ in c.reasons()],
+                "label": " · ".join(label for _, _, label, _ in c.reasons()),
+                "reasons": [
+                    {"type": kind, "label": label, "short": short}
+                    for kind, _, label, short in c.reasons()
+                ],
                 "strength": round(c.strength, 2),
             }
             for c in result.connections

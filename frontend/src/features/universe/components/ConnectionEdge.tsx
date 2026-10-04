@@ -1,25 +1,24 @@
 import { BaseEdge, EdgeLabelRenderer, getStraightPath, type EdgeProps } from "@xyflow/react";
 import { memo } from "react";
 
-import { CONNECTION_STYLES } from "../connectionStyles";
-import { shortLabel, type ConnectionEdge as ConnectionEdgeType } from "../graph";
+import { CONNECTION_STYLES, strokeWidth } from "../connectionStyles";
+import { chipText, type ConnectionEdge as ConnectionEdgeType } from "../graph";
 import { useUniverse } from "../UniverseContext";
 
-const LABEL_POSITION = 0.62;
-
 function ConnectionEdgeView({ id, sourceX, sourceY, targetX, targetY, data }: EdgeProps<ConnectionEdgeType>) {
-  const { hoveredEdgeId, selectedId } = useUniverse();
+  const { hoveredEdgeId, spotlightId, chips } = useUniverse();
   if (!data) return null;
   const { connection } = data;
   const style = CONNECTION_STYLES[connection.type];
+  const Icon = style.icon;
   const [path] = getStraightPath({ sourceX, sourceY, targetX, targetY });
-  // Label toward the neighbor: the middle of the line is often behind the center poster.
-  const labelX = sourceX + (targetX - sourceX) * LABEL_POSITION;
-  const labelY = sourceY + (targetY - sourceY) * LABEL_POSITION;
 
   const hovered = hoveredEdgeId === id;
-  const touchesSelection = selectedId !== null && (connection.source === selectedId || connection.target === selectedId);
-  const opacity = hovered || touchesSelection ? 0.95 : selectedId !== null ? 0.12 : 0.5;
+  const lit = spotlightId !== null && (connection.source === spotlightId || connection.target === spotlightId);
+  const opacity = hovered || lit ? 1 : spotlightId !== null ? 0.08 : 0.6;
+  // With a movie in the spotlight only its chips show; otherwise those that fit without overlapping.
+  const chip = chips.get(id);
+  const showChip = chip !== undefined && (hovered || lit || (spotlightId === null && chip.fits));
 
   return (
     <>
@@ -30,22 +29,25 @@ function ConnectionEdgeView({ id, sourceX, sourceY, targetX, targetY, data }: Ed
         className="animate-edge-in"
         style={{
           stroke: style.color,
-          strokeWidth: 1 + connection.strength * 3 + (hovered ? 1.5 : 0),
+          strokeWidth: strokeWidth(connection.type, connection.strength) + (hovered || lit ? 1 : 0),
           strokeOpacity: opacity,
           strokeDasharray: style.dash,
-          strokeLinecap: "round",
+          strokeLinecap: style.lineCap,
           transition: "stroke-opacity 250ms, stroke-width 200ms",
           animationDelay: `${data.order * 55 + 150}ms`,
         }}
       />
-      {hovered && (
+      {showChip && (
         <EdgeLabelRenderer>
           <div
-            className="pointer-events-none absolute flex max-w-64 animate-fade-up items-center gap-2 rounded-full border border-line-strong bg-raised/95 px-3 py-1.5 text-xs font-bold text-fg shadow-poster backdrop-blur-md"
-            style={{ transform: `translate(-50%, -50%) translate(${labelX}px, ${labelY}px)` }}
+            data-testid="edge-chip"
+            className={`pointer-events-none absolute flex max-w-48 items-center gap-1.5 rounded-full border bg-deep/90 px-2.5 py-1.5 text-xs font-bold leading-none text-fg shadow-poster backdrop-blur-md transition-opacity duration-200 ${
+              hovered || lit ? "z-10 border-line-strong" : "border-line"
+            }`}
+            style={{ transform: `translate(-50%, -50%) translate(${chip.x}px, ${chip.y}px)` }}
           >
-            <span aria-hidden className={`size-2 shrink-0 rounded-full ${style.swatch}`} />
-            <span className="truncate">{shortLabel(connection.reasons.map((r) => r.label))}</span>
+            <Icon aria-hidden className={`size-3.5 shrink-0 ${style.text}`} />
+            <span className="truncate">{chipText(connection)}</span>
           </div>
         </EdgeLabelRenderer>
       )}

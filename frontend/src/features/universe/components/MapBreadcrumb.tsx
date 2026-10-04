@@ -10,7 +10,7 @@ interface MapBreadcrumbProps {
 /** The exploration path (Interstellar › Inception › Memento); each step goes back to it. */
 export function MapBreadcrumb({ path, onSelect }: MapBreadcrumbProps) {
   return (
-    <nav aria-label="Recorrido" className="max-w-full overflow-x-auto rounded-full border border-line bg-surface px-2 py-1.5 shadow-card backdrop-blur-md">
+    <nav aria-label="Recorrido" className="max-w-full overflow-x-auto scrollbar-none rounded-full border border-line bg-surface px-2 py-1.5 shadow-card backdrop-blur-md">
       <ol className="flex items-center gap-0.5 whitespace-nowrap">
         {path.map((movie, index) => {
           const isLast = index === path.length - 1;

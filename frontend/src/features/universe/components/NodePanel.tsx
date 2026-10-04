@@ -87,18 +87,18 @@ export function NodePanel({
                 <li key={`${connection.source}-${connection.target}`} className="rounded-control border border-line bg-raised/60 px-3 py-2.5">
                   {other && <p className="mb-1 text-xs text-fg-muted">Con {other.title}</p>}
                   <ul className="flex flex-col gap-1">
-                    {connection.reasons.map((reason) => (
-                      <li key={reason.type} className="flex items-start gap-2 text-sm text-fg">
-                        <span
-                          aria-hidden
-                          className={`mt-1.5 size-2 shrink-0 rounded-full ${CONNECTION_STYLES[reason.type].swatch}`}
-                        />
-                        <span>
-                          <span className="sr-only">{CONNECTION_STYLES[reason.type].label}: </span>
-                          {reason.label}
-                        </span>
-                      </li>
-                    ))}
+                    {connection.reasons.map((reason) => {
+                      const { icon: Icon, text, label } = CONNECTION_STYLES[reason.type];
+                      return (
+                        <li key={reason.type} className="flex items-start gap-2 text-sm text-fg">
+                          <Icon aria-hidden className={`mt-0.5 size-4 shrink-0 ${text}`} />
+                          <span>
+                            <span className="sr-only">{label}: </span>
+                            {reason.label}
+                          </span>
+                        </li>
+                      );
+                    })}
                   </ul>
                 </li>
               ))}

@@ -21,12 +21,12 @@ const HANDLE_STYLE: CSSProperties = {
 };
 
 function MovieNodeView({ data }: NodeProps<MovieNodeType>) {
-  const { rootId, focusId, selectedId, highlighted, select } = useUniverse();
+  const { rootId, focusId, selectedId, highlighted, orphans, select, hoverNode } = useUniverse();
   const { movie } = data;
   const isRoot = movie.id === rootId;
   const isFocus = movie.id === focusId && !isRoot;
   const isSelected = movie.id === selectedId;
-  const dimmed = highlighted !== null && !highlighted.has(movie.id);
+  const dimmed = (highlighted !== null && !highlighted.has(movie.id)) || (orphans.has(movie.id) && !isRoot);
 
   // Widths match NODE_SIZE / ROOT_SIZE in graph.ts (the layout keeps these boxes apart).
   const size = isRoot ? "w-[150px]" : isFocus ? "w-[104px]" : "w-[90px]";
@@ -38,8 +38,10 @@ function MovieNodeView({ data }: NodeProps<MovieNodeType>) {
 
   return (
     <div
-      className={`group flex animate-node-in flex-col items-center gap-2 transition-opacity duration-300 ${size} ${dimmed ? "opacity-35" : ""}`}
+      className={`group flex animate-node-in flex-col items-center gap-2 transition-opacity duration-300 ${size} ${dimmed ? "opacity-30" : ""}`}
       style={{ animationDelay: `${data.order * 55}ms` }}
+      onMouseEnter={() => hoverNode(movie.id)}
+      onMouseLeave={() => hoverNode(null)}
     >
       <Handle type="target" position={Position.Top} style={HANDLE_STYLE} isConnectable={false} />
       <button

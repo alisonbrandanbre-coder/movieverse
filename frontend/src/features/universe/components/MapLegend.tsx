@@ -1,36 +1,82 @@
-import { CONNECTION_ORDER, CONNECTION_STYLES } from "../connectionStyles";
+import { ChevronDown } from "lucide-react";
+import { useState } from "react";
 
-/** Fixed legend: line color (and dash for genres) per connection type. One compact row on phones. */
-export function MapLegend({ className = "" }: { className?: string }) {
+import type { ConnectionType } from "@/types/graph";
+
+import { CONNECTION_ORDER, CONNECTION_STYLES, strokeWidth } from "../connectionStyles";
+
+interface MapLegendProps {
+  /** Types the user turned off: their edges are hidden. */
+  hidden: ReadonlySet<ConnectionType>;
+  onToggle: (type: ConnectionType) => void;
+  className?: string;
+}
+
+function startsOpen(): boolean {
+  // Phones start collapsed: the chips on the edges already name each type.
+  return !(typeof window !== "undefined" && window.matchMedia?.("(max-width: 639px)").matches);
+}
+
+/**
+ * Legend and filter: each type's stroke (same width, dash and color as on the map) and icon.
+ * Clicking a type shows or hides its connections; the header collapses the whole legend.
+ */
+export function MapLegend({ hidden, onToggle, className = "" }: MapLegendProps) {
+  const [open, setOpen] = useState(startsOpen);
+
   return (
     <div
-      className={`rounded-card border border-line bg-surface px-3 py-2 shadow-card backdrop-blur-md sm:px-4 sm:py-3 ${className}`}
+      className={`rounded-card border border-line bg-surface p-1.5 shadow-card backdrop-blur-md ${className}`}
       aria-label="Leyenda de conexiones"
       role="group"
+      data-map-overlay
     >
-      <p className="eyebrow mb-2 hidden text-[10px] tracking-[3px] sm:block">Conexiones</p>
-      <ul className="flex flex-wrap gap-x-3 gap-y-1.5 sm:grid sm:grid-cols-1">
-        {CONNECTION_ORDER.map((type) => {
-          const style = CONNECTION_STYLES[type];
-          return (
-            <li key={type} className="flex items-center gap-1.5 text-xs font-semibold text-fg-secondary sm:gap-2.5">
-              <svg aria-hidden width="26" height="6" viewBox="0 0 26 6" className="w-4 shrink-0 overflow-visible sm:w-[26px]">
-                <line
-                  x1="1"
-                  y1="3"
-                  x2="25"
-                  y2="3"
-                  stroke={style.color}
-                  strokeWidth="3"
-                  strokeLinecap="round"
-                  strokeDasharray={style.dash ? "4 4" : undefined}
-                />
-              </svg>
-              {style.label}
-            </li>
-          );
-        })}
-      </ul>
+      <button
+        type="button"
+        aria-expanded={open}
+        onClick={() => setOpen((value) => !value)}
+        className="flex w-full items-center justify-between gap-3 rounded-control px-2.5 py-1.5 focus-visible:outline-2 focus-visible:outline-focus"
+      >
+        <span className="eyebrow text-[10px] tracking-[3px]">Conexiones</span>
+        <ChevronDown className={`size-4 text-fg-muted transition-transform ${open ? "rotate-180" : ""}`} aria-hidden />
+      </button>
+      {open && (
+        <ul className="flex flex-col gap-0.5">
+          {CONNECTION_ORDER.map((type) => {
+            const style = CONNECTION_STYLES[type];
+            const Icon = style.icon;
+            const visible = !hidden.has(type);
+            return (
+              <li key={type}>
+                <button
+                  type="button"
+                  aria-pressed={visible}
+                  title={visible ? `Ocultar ${style.label.toLowerCase()}` : `Mostrar ${style.label.toLowerCase()}`}
+                  onClick={() => onToggle(type)}
+                  className={`flex w-full items-center gap-2.5 rounded-control px-2.5 py-1.5 text-xs font-semibold transition hover:bg-violet/15 focus-visible:outline-2 focus-visible:outline-focus ${
+                    visible ? "text-fg-secondary" : "text-fg-muted opacity-50"
+                  }`}
+                >
+                  <svg aria-hidden width="30" height="8" className="shrink-0 overflow-visible">
+                    <line
+                      x1="2"
+                      y1="4"
+                      x2="28"
+                      y2="4"
+                      stroke={style.color}
+                      strokeWidth={strokeWidth(type, 0.8)}
+                      strokeLinecap={style.lineCap}
+                      strokeDasharray={style.dash}
+                    />
+                  </svg>
+                  <Icon aria-hidden className={`size-3.5 shrink-0 ${style.text}`} />
+                  <span className={visible ? "" : "line-through"}>{style.label}</span>
+                </button>
+              </li>
+            );
+          })}
+        </ul>
+      )}
     </div>
   );
 }

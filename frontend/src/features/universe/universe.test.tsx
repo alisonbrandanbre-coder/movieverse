@@ -13,8 +13,8 @@ function node(id: number, title: string, year = 2010) {
   return { id, tmdb_id: 1000 + id, title, poster: null, year, score: 8.1, overview: `Sinopsis de ${title}.` };
 }
 
-function edge(source: number, target: number, type: string, label: string, strength: number) {
-  return { source, target, type, types: [type], label, reasons: [{ type, label }], strength };
+function edge(source: number, target: number, type: string, label: string, strength: number, short = label.split(" por ").pop()!) {
+  return { source, target, type, types: [type], label, reasons: [{ type, label, short }], strength };
 }
 
 const INTERSTELLAR = {
@@ -23,7 +23,7 @@ const INTERSTELLAR = {
   edges: [
     edge(1, 2, "DIRECTOR", "Dirigidas por Christopher Nolan", 1),
     edge(1, 3, "DIRECTOR", "Dirigidas por Christopher Nolan", 1),
-    edge(1, 4, "SIMILAR", "Similares según TMDB", 0.8),
+    edge(1, 4, "SIMILAR", "Similares según TMDB", 0.8, "Similar"),
   ],
   degraded: false,
 };
@@ -34,7 +34,7 @@ const INCEPTION = {
   edges: [
     edge(2, 1, "DIRECTOR", "Dirigidas por Christopher Nolan", 1),
     edge(2, 3, "DIRECTOR", "Dirigidas por Christopher Nolan", 1),
-    edge(2, 5, "ACTOR", "Ambas con Leonardo DiCaprio", 0.9),
+    edge(2, 5, "ACTOR", "Ambas con Leonardo DiCaprio", 0.9, "Leonardo DiCaprio"),
   ],
   degraded: false,
 };
@@ -279,5 +279,54 @@ describe("UniverseStartPage", () => {
     await userEvent.click(await within(results).findByRole("link", { name: "Explorar el universo de Interstellar" }));
 
     expect(await nodeButton("Interstellar (2014)")).toBeInTheDocument();
+  });
+});
+
+describe("Map legibility", () => {
+  const chipTexts = () => screen.queryAllByTestId("edge-chip").map((chip) => chip.textContent);
+
+  it("labels each connection with a chip: the person, «Similar» or the genre", async () => {
+    renderMap({ "GET /graph/movies/1": () => jsonResponse(INTERSTELLAR) });
+
+    await nodeButton("Interstellar (2014)");
+    await waitFor(() => expect(chipTexts()).toContain("Similar"));
+
+    // Chips without room (they would cover a poster) show on hover.
+    await userEvent.hover(screen.getByRole("button", { name: "Inception (2010)" }));
+    await waitFor(() => expect(chipTexts()).toEqual(["Christopher Nolan"]));
+  });
+
+  it("the legend filters connection types and can be collapsed", async () => {
+    renderMap({ "GET /graph/movies/1": () => jsonResponse(INTERSTELLAR) });
+    await nodeButton("Interstellar (2014)");
+    const legend = screen.getByRole("group", { name: "Leyenda de conexiones" });
+    await waitFor(() => expect(chipTexts()).toContain("Similar"));
+
+    const similar = within(legend).getByRole("button", { name: /Similar/ });
+    expect(similar).toHaveAttribute("aria-pressed", "true");
+    await userEvent.click(similar);
+    expect(similar).toHaveAttribute("aria-pressed", "false");
+    expect(chipTexts()).not.toContain("Similar");
+
+    await userEvent.click(similar);
+    await waitFor(() => expect(chipTexts()).toContain("Similar"));
+
+    await userEvent.click(within(legend).getByRole("button", { name: "Conexiones" }));
+    expect(within(legend).queryByRole("button", { name: /Similar/ })).not.toBeInTheDocument();
+  });
+
+  it("hovering a movie keeps its connections lit and dims the rest", async () => {
+    renderMap({ "GET /graph/movies/1": () => jsonResponse(INTERSTELLAR) });
+    const gravity = await nodeButton("Gravity (2013)");
+
+    await userEvent.hover(gravity);
+
+    // Only Gravity's chip remains and the movies it is not connected to fade out.
+    await waitFor(() => expect(chipTexts()).toEqual(["Similar"]));
+    expect(screen.getByRole("button", { name: "Memento (2000)" }).parentElement).toHaveClass("opacity-30");
+    expect(screen.getByRole("button", { name: "Interstellar (2014)" }).parentElement).not.toHaveClass("opacity-30");
+
+    await userEvent.unhover(gravity);
+    await waitFor(() => expect(screen.getByRole("button", { name: "Memento (2000)" }).parentElement).not.toHaveClass("opacity-30"));
   });
 });

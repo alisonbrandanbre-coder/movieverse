@@ -71,8 +71,11 @@ Implementado en Sprint 4 (`/universe/:movieId`, React Flow / `@xyflow/react`):
 - "Universo" en el menú principal lleva a `/universe`: buscador para elegir la película de inicio, tus favoritas y «Me gusta» como punto de partida o, si no tenés, películas muy conocidas.
 - Fondo espacial con zoom, pan y minimapa discreto. En mobile el minimapa no se muestra.
 - Disposición radial (una elipse con la forma de la pantalla; en teléfonos, tres columnas compactas), sin superposiciones y con las conexiones más fuertes más cerca del centro. En escritorio los pósters se ven de ~90 px (vecinos) y ~150 px (centro).
-- Aristas con color por tipo (director dorado, actor azul, similar violeta, género gris azulado punteado) y grosor según la fuerza. Al pasar el mouse muestran una etiqueta corta.
-- Leyenda fija abajo a la izquierda.
+- Aristas que se distinguen por color y trazo: director dorado sólido y grueso, actor celeste sólido, similar violeta punteado y género gris azulado discontinuo y fino; el grosor crece con la fuerza.
+- Cada arista lleva un chip con ícono y motivo corto ("Mike Newell", "Brendan Gleeson", "Similar", "Fantasía", con "+1" si hay más). Si los chips se pisarían, sólo se muestran los de la película con hover o seleccionada.
+- Hover sobre una película: se resaltan sus conexiones y se atenúa el resto.
+- Los vecinos se agrupan por tipo de conexión alrededor del centro (zonas).
+- Leyenda abajo a la izquierda que también filtra (click en un tipo lo oculta o muestra) y se puede colapsar. La leyenda y el minimapa no tapan películas: el encuadre les deja lugar.
 - Click en un nodo → panel lateral (hoja inferior en mobile) con póster, sinopsis, puntaje, motivos de cada conexión, "Ver ficha" y "Expandir desde acá".
 - Expandir reutiliza los nodos que ya están, suma los nuevos animados y centra la vista.
 - Miga de pan con el recorrido, "Recentrar" y "Limpiar mapa", y aviso al llegar a ~50 nodos.

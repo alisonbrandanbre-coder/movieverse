@@ -4,7 +4,9 @@
  */
 import type { Edge, Node } from "@xyflow/react";
 
-import type { GraphConnection, GraphMovie, Neighborhood } from "@/types/graph";
+import type { ConnectionType, GraphConnection, GraphMovie, Neighborhood } from "@/types/graph";
+
+import { CONNECTION_ORDER } from "./connectionStyles";
 
 export const MAX_ACTIVE_NODES = 50;
 
@@ -30,7 +32,9 @@ export interface Point {
 // Layout (flow units; at zoom 1 they are screen pixels). Node sizes match MovieNode: the
 // box is poster + title + year, and the title is wider than the poster.
 export const NODE_SIZE = { poster: 90, width: 144, height: 210 };
-export const ROOT_SIZE = { poster: 150, width: 240, height: 300 };
+export const ROOT_SIZE = { poster: 150, width: 240, height: 300 }; // one-line title
+const ROOT_TWO_LINES_HEIGHT = 340;
+const ROOT_LINE_CHARS = 18; // Bebas Neue 30px in the title's 240px
 const GAP = 12; // free space between two node boxes
 
 // First ring: an ellipse with the map's aspect ratio (wide on desktop, tall on phones), as
@@ -43,7 +47,12 @@ const START_RADIUS_Y = 170;
 // vertically from CLEAR_Y. A flat ring leaves the band right above and below the center
 // empty (|x| < CLEAR_X), so it can stay low and use a wide screen.
 const CLEAR_X = ROOT_SIZE.width / 2 + NODE_SIZE.width / 2 + GAP;
-const CLEAR_Y = ROOT_SIZE.height / 2 + NODE_SIZE.height / 2 + GAP;
+const clearY = (root: typeof ROOT_SIZE) => root.height / 2 + NODE_SIZE.height / 2 + GAP;
+
+/** The center node's box: taller when its display title wraps to a second line. */
+export function rootSize(movie: GraphMovie): typeof ROOT_SIZE {
+  return movie.title.length > ROOT_LINE_CHARS ? { ...ROOT_SIZE, height: ROOT_TWO_LINES_HEIGHT } : ROOT_SIZE;
+}
 // Phones (narrower than this aspect) can't fit a ring: three compact columns instead.
 const PHONE_ASPECT = 0.75;
 const RING_GROWTH = 1.03;
@@ -90,6 +99,22 @@ function neighborsByStrength(neighborhood: Neighborhood): GraphConnection[] {
   return [...neighborhood.edges].sort((a, b) => b.strength - a.strength);
 }
 
+/**
+ * Neighbors grouped by their main connection type (directors, then actors, similar and
+ * genres), strongest first inside each group: placed in this order around a ring, each type
+ * reads as a "zone".
+ */
+function neighborsByType(neighborhood: Neighborhood): GraphConnection[] {
+  const rank = (type: ConnectionType) => CONNECTION_ORDER.indexOf(type);
+  return [...neighborhood.edges].sort((a, b) => rank(a.type) - rank(b.type) || b.strength - a.strength);
+}
+
+/** Clockwise from straight up, so phone slots can be filled zone by zone too. */
+function clockwise(point: Point): number {
+  const angle = Math.atan2(point.y, point.x) + Math.PI / 2;
+  return angle < 0 ? angle + 2 * Math.PI : angle;
+}
+
 interface Box {
   left: number;
   top: number;
@@ -112,7 +137,7 @@ function overlaps(a: Box, b: Box): boolean {
 }
 
 function nodeBox(node: MovieNode, rootId: string): Box {
-  return boxAt(node.position, node.id === rootId ? ROOT_SIZE : NODE_SIZE);
+  return boxAt(node.position, node.id === rootId ? rootSize(node.data.movie) : NODE_SIZE);
 }
 
 /**
@@ -120,10 +145,10 @@ function nodeBox(node: MovieNode, rootId: string): Box {
  * node boxes, so neighbors are as far apart at the narrow ends as on the long sides. When
  * the ring is too low to pass over the center node, the arcs above and below it are skipped.
  */
-function ellipsePoints(count: number, rx: number, ry: number): Point[] {
+function ellipsePoints(count: number, rx: number, ry: number, root: typeof ROOT_SIZE): Point[] {
   const unitX = NODE_SIZE.width + GAP;
   const unitY = NODE_SIZE.height + GAP;
-  const allowed = (angle: number) => ry >= CLEAR_Y || Math.abs(Math.cos(angle) * rx) >= CLEAR_X;
+  const allowed = (angle: number) => ry >= clearY(root) || Math.abs(Math.cos(angle) * rx) >= CLEAR_X;
   const angles: number[] = [];
   const lengths: number[] = [0];
   for (let i = 0; i <= ARC_SAMPLES; i += 1) {
@@ -152,22 +177,24 @@ function ellipsePoints(count: number, rx: number, ry: number): Point[] {
  * Phone layout: the center in the middle column, neighbors beside it (two side columns)
  * and above/below it; the nearest free slots first, so the map stays as short as possible.
  */
-function columnPoints(count: number): Point[] {
+function columnPoints(count: number, root: typeof ROOT_SIZE): Point[] {
   const row = NODE_SIZE.height + GAP;
   const slots: Point[] = [];
   for (let j = 0; j <= count; j += 1) {
     for (const y of j === 0 ? [0] : [j * row, -j * row]) slots.push({ x: CLEAR_X, y }, { x: -CLEAR_X, y });
-    slots.push({ x: 0, y: CLEAR_Y + j * row }, { x: 0, y: -(CLEAR_Y + j * row) });
+    slots.push({ x: 0, y: clearY(root) + j * row }, { x: 0, y: -(clearY(root) + j * row) });
   }
   // Nearest first; on ties the lower one (keeps the map short), then right before left.
+  // The chosen slots are then walked clockwise, so each connection type gets its own zone.
   return slots
     .sort((a, b) => Math.hypot(a.x, a.y) - Math.hypot(b.x, b.y) || Math.abs(a.y) - Math.abs(b.y) || b.x - a.x || a.y - b.y)
-    .slice(0, count);
+    .slice(0, count)
+    .sort((a, b) => clockwise(a) - clockwise(b));
 }
 
 /**
- * First map: the center at the origin and its neighbors on an ellipse around it, strongest
- * first and closest. `aspect` is the map's width / height: the ring takes the same shape so
+ * First map: the center at the origin and its neighbors on an ellipse around it, grouped by
+ * connection type (zones) and, inside each zone, strongest first and closest. `aspect` is the map's width / height: the ring takes the same shape so
  * the initial fit uses the whole screen.
  */
 export function createMap(
@@ -177,17 +204,18 @@ export function createMap(
   const movies = new Map(neighborhood.nodes.map((m) => [m.id, m]));
   const center = movies.get(neighborhood.center);
   if (!center) return { nodes: [], edges: [] };
-  const connections = neighborsByStrength(neighborhood).filter((c) => movies.has(c.target));
+  const connections = neighborsByType(neighborhood).filter((c) => movies.has(c.target));
   const root = toNode(center, { x: 0, y: 0 }, 0);
-  const middle = { x: ROOT_SIZE.poster / 2, y: ROOT_SIZE.height / 2 };
-  const rootBox = boxAt(root.position, ROOT_SIZE);
+  const rootBoxSize = rootSize(center);
+  const middle = { x: rootBoxSize.poster / 2, y: rootBoxSize.height / 2 };
+  const rootBox = boxAt(root.position, rootBoxSize);
 
   const place = (point: Point, strength: number): Point => {
     const push = 1 + (1 - Math.min(1, Math.max(0, strength))) * STRENGTH_SPREAD;
     return { x: middle.x + point.x * push - NODE_SIZE.poster / 2, y: middle.y + point.y * push - NODE_SIZE.height / 2 };
   };
   if (aspect < PHONE_ASPECT) {
-    const positions = columnPoints(connections.length).map((point) => place(point, 1));
+    const positions = columnPoints(connections.length, rootBoxSize).map((point) => place(point, 1));
     const nodes = [root, ...connections.map((c, i) => toNode(movies.get(c.target)!, positions[i], i + 1))];
     return { nodes, edges: connections.map((c, i) => toEdge(c, i + 1)) };
   }
@@ -201,7 +229,7 @@ export function createMap(
   }
   let positions: Point[] = [];
   for (let attempt = 0; attempt < MAX_RING_TRIES; attempt += 1) {
-    positions = ellipsePoints(connections.length, rx, ry).map((point, i) => place(point, connections[i].strength));
+    positions = ellipsePoints(connections.length, rx, ry, rootBoxSize).map((point, i) => place(point, connections[i].strength));
     const boxes = positions.map((p) => boxAt(p, NODE_SIZE));
     const clear = boxes.every(
       (box, i) => !overlaps(box, rootBox) && boxes.slice(i + 1).every((other) => !overlaps(box, other)),
@@ -260,7 +288,7 @@ export function mergeNeighborhood(
   const movies = new Map(neighborhood.nodes.map((m) => [m.id, m]));
   const origin = anchor.position;
   const outward = from ? Math.atan2(origin.y - from.y, origin.x - from.x) : -Math.PI / 2;
-  const fresh = neighborsByStrength(neighborhood).filter((c) => !known.has(nodeId(c.target)) && movies.has(c.target));
+  const fresh = neighborsByType(neighborhood).filter((c) => !known.has(nodeId(c.target)) && movies.has(c.target));
   const taken = nodes.map((n) => nodeBox(n, nodes[0].id)); // the map's root is always first
   const added: MovieNode[] = [];
   fresh.forEach((connection, i) => {
@@ -297,7 +325,84 @@ export function visit(path: number[], movieId: number): number[] {
   return index >= 0 ? path.slice(0, index + 1) : [...path, movieId];
 }
 
-/** Short hover label for an edge: the strongest reason, plus how many more there are. */
-export function shortLabel(labels: string[]): string {
-  return labels.length > 1 ? `${labels[0]} · +${labels.length - 1}` : (labels[0] ?? "");
+/** Chip text for an edge: the main reason, short ("Mike Newell"), plus how many more there are. */
+export function chipText(connection: GraphConnection): string {
+  const [main, ...rest] = connection.reasons;
+  const text = main?.short || main?.label || connection.label;
+  return rest.length > 0 ? `${text} +${rest.length}` : text;
+}
+
+export interface ChipSpot {
+  x: number;
+  y: number;
+  /** Shown without hovering: it overlaps neither another chip nor a movie. */
+  fits: boolean;
+}
+
+// Chip estimate in flow units (12px bold text, icon, padding), a bit generous on purpose.
+const CHIP_HEIGHT = 26;
+const CHIP_CHAR_WIDTH = 7.2;
+const CHIP_PADDING = 42;
+const CHIP_MARGIN = 6;
+// Where along the line's visible part a chip may go: the middle first, then further out.
+const CHIP_STOPS = [0.5, 0.62, 0.38, 0.74, 0.26, 0.85];
+// Edges start and end at the poster's handle, 38% down the node (see MovieNode).
+const HANDLE_AT = 0.38;
+
+/**
+ * Where each edge's chip goes (on the line's visible part, between the two node boxes) and
+ * whether it can always be shown. Strongest edges claim their spot first, trying the middle
+ * and then other points of the line; a chip that would still cover a movie or another chip
+ * sits in the middle and only shows on hover/selection. Uses measured node heights when
+ * React Flow has them (titles of one or two lines).
+ */
+export function chipLayout(nodes: MovieNode[], edges: ConnectionEdge[], hidden: ReadonlySet<ConnectionType> = new Set()): Map<string, ChipSpot> {
+  const rootId = nodes[0]?.id;
+  const geometry = new Map(
+    nodes.map((n) => {
+      const base = n.id === rootId ? rootSize(n.data.movie) : NODE_SIZE;
+      const size = { ...base, height: n.measured?.height ?? base.height };
+      const handle = { x: n.position.x + size.poster / 2, y: n.position.y + size.height * HANDLE_AT };
+      return [n.id, { handle, size, box: boxAt(n.position, size) }];
+    }),
+  );
+  // Fraction of the line (from `from` towards `to`) still inside `from`'s box.
+  const exit = (from: { handle: Point; size: typeof NODE_SIZE }, dx: number, dy: number) => {
+    const sideX = from.size.width / 2;
+    const sideY = dy < 0 ? from.size.height * HANDLE_AT : from.size.height * (1 - HANDLE_AT);
+    return Math.min(dx === 0 ? Infinity : sideX / Math.abs(dx), dy === 0 ? Infinity : sideY / Math.abs(dy));
+  };
+  const boxes = [...geometry.values()].map((g) => g.box);
+  const placed: Box[] = [];
+  const spots = new Map<string, ChipSpot>();
+  const ordered = [...edges].sort((a, b) => (b.data?.connection.strength ?? 0) - (a.data?.connection.strength ?? 0));
+  for (const edge of ordered) {
+    const source = geometry.get(edge.source);
+    const target = geometry.get(edge.target);
+    if (!source || !target || !edge.data) continue;
+    const dx = target.handle.x - source.handle.x;
+    const dy = target.handle.y - source.handle.y;
+    const start = exit(source, dx, dy);
+    const end = 1 - exit(target, -dx, -dy);
+    const width = CHIP_PADDING + chipText(edge.data.connection).length * CHIP_CHAR_WIDTH;
+    const chipAt = (stop: number) => {
+      const t = start + (end - start) * stop;
+      const x = source.handle.x + dx * t;
+      const y = source.handle.y + dy * t;
+      return { x, y, box: { left: x - width / 2, top: y - CHIP_HEIGHT / 2, width, height: CHIP_HEIGHT } };
+    };
+    const apart = (chip: Box) => (other: Box) =>
+      chip.left + chip.width + CHIP_MARGIN <= other.left ||
+      other.left + other.width + CHIP_MARGIN <= chip.left ||
+      chip.top + chip.height + CHIP_MARGIN <= other.top ||
+      other.top + other.height + CHIP_MARGIN <= chip.top;
+    const free =
+      !hidden.has(edge.data.connection.type) && end > start
+        ? CHIP_STOPS.map(chipAt).find(({ box }) => boxes.every(apart(box)) && placed.every(apart(box)))
+        : undefined;
+    if (free) placed.push(free.box);
+    const spot = free ?? chipAt(0.5);
+    spots.set(edge.id, { x: spot.x, y: spot.y, fits: free !== undefined });
+  }
+  return spots;
 }

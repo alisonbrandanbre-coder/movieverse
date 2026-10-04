@@ -14,6 +14,8 @@ export interface ConnectionReason {
   type: ConnectionType;
   /** Readable and verifiable: "Dirigidas por Christopher Nolan". */
   label: string;
+  /** For the map's chip: "Christopher Nolan", "Similar", "Fantasía". */
+  short: string;
 }
 
 export interface GraphConnection {

@@ -203,8 +203,8 @@ Vecindario de una película en el mapa cinematográfico, armado por `GraphServic
       "types": ["DIRECTOR", "GENRE"],
       "label": "Dirigidas por Christopher Nolan · Comparten Aventura y Ciencia ficción",
       "reasons": [
-        {"type": "DIRECTOR", "label": "Dirigidas por Christopher Nolan"},
-        {"type": "GENRE", "label": "Comparten Aventura y Ciencia ficción"}
+        {"type": "DIRECTOR", "label": "Dirigidas por Christopher Nolan", "short": "Christopher Nolan"},
+        {"type": "GENRE", "label": "Comparten Aventura y Ciencia ficción", "short": "Aventura"}
       ],
       "strength": 1.0
     }
@@ -214,7 +214,7 @@ Vecindario de una película en el mapa cinematográfico, armado por `GraphServic
 ```
 
 - `nodes`: el centro primero y después cada vecino una sola vez. `score` es la nota de TMDB (`null` sin votos). `overview` viene recortado a ~280 caracteres.
-- `edges`: una por vecino, siempre desde `center`. Si una película se conecta por varios motivos, va **una sola arista** que los combina: `type` es el más fuerte, `types` y `reasons` los listan todos y `label` los une con " · ".
+- `edges`: una por vecino, siempre desde `center`. Si una película se conecta por varios motivos, va **una sola arista** que los combina: `type` es el más fuerte, `types` y `reasons` los listan todos y `label` los une con " · ". Cada motivo trae `short`, la versión corta para el chip del mapa: la persona (el primer director o actor compartido), `"Similar"` o el primer género compartido.
 - Tipos y `strength`: `DIRECTOR` 1,00 (mismo director) · `ACTOR` 0,90 (comparten uno de los 5 actores principales, y también es principal en la otra) · `SIMILAR` 0,80 (TMDB *recommendations* / *similar*) · `GENRE` 0,60 con 2 o más géneros compartidos, 0,35 con uno. Cada motivo extra suma 0,05 (máximo 1,0).
 - Orden: `strength` y, a igual fuerza, mejor nota ponderada.
 - Diversidad: ningún tipo ocupa más de la mitad de las aristas, las que sólo comparten género no pasan de un tercio y una misma persona aporta como mucho 4 películas. Los topes sólo se relajan para llegar a 8 aristas.
