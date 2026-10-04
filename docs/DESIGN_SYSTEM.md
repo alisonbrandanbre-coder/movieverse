@@ -67,7 +67,7 @@ Etiquetas: utility **`eyebrow`** = 12 px, bold, mayúsculas, `letter-spacing: 4p
 | `shadow-poster` / `shadow-card` | Profundidad de pósters y tarjetas |
 | `bg-brand` | Gradiente horizontal `blue → violet` (botón primario) |
 | `eyebrow` | Etiqueta pequeña en mayúsculas |
-| `planet` | Planeta azul del fondo |
+| `drop-shadow-planet` | Halo violeta alrededor del planeta |
 | `animate-twinkle` · `animate-float` · `animate-comet` | Fondo espacial |
 | `animate-fade-up` | Entrada de bloques |
 | `animate-intro-*` | Timeline de la intro (3 s) |
@@ -80,9 +80,17 @@ Etiquetas: utility **`eyebrow`** = 12 px, bold, mayúsculas, `letter-spacing: 4p
 | --- | --- |
 | `Logo` | Claqueta + wordmark **MOVIE** (`fg`) **VERSE** (`violet-light`) en Bebas Neue, `tracking-[2px]`. `size="sm"` (header) · `"lg"` (intro). |
 | `ClapperMark` | Sólo el ícono SVG: claqueta inclinada, franjas en gradiente azul→violeta, cuerpo azul marino con líneas claras y estrella dorada de 4 puntas. Mismo dibujo que `public/favicon.svg`. |
-| `SpaceBackground` | Cielo reutilizable: 3 capas de estrellas (`box-shadow`, posiciones deterministas) con titileo, mancha azul arriba-izquierda y violeta abajo-derecha, 2 cometas en diagonal cada 9 s y un planeta que flota. `fixed` detrás del contenido; ya lo incluyen `AppLayout` e `IntroPage`. |
+| `SpaceBackground` | Cielo reutilizable: 3 capas de estrellas (`box-shadow`, posiciones deterministas) con titileo, mancha azul arriba-izquierda y violeta abajo-derecha, 2 cometas en diagonal cada 9 s y un planeta que flota (`src/assets/planeta.webp`). Prop `planet`: `"hero"` (≈420 px, Login/Registro/Intro) o `"subtle"` (≈180 px, translúcido, resto de pantallas, para no competir con los pósters). `fixed` detrás del contenido; ya lo incluyen `AppLayout` (elige la variante según la ruta) e `IntroPage`. |
 | `Constellation` | Mini constelación decorativa (Interstellar al centro con punto dorado, unida a Inception/Memento por DIRECTOR, Gravity por GÉNERO y The Martian por SIMILAR). En `AuthLayout`. |
 | `TAGLINE` | `{ lead, accent }` del claim. |
+
+### Planeta (`src/assets/planeta.webp`)
+
+Generado desde `ImagenesReferencia/Planeta.png` (1254 px, 3,3 MB): 800 × 800 px, WebP calidad 80, ~154 KB, **con el fondo de espacio recortado** (alfa circular con borde difuminado), así que se funde con cualquier fondo sin máscara CSS. Decorativo: `alt=""`, `loading="lazy"`. Para regenerarlo:
+
+```sh
+ffmpeg -i ImagenesReferencia/Planeta.png -vf "scale=800:800:flags=lanczos,format=rgba,geq=r='r(X,Y)':g='g(X,Y)':b='b(X,Y)':a='255*clip((354-hypot(X-404,Y-410))/34,0,1)'" -c:v libwebp -quality 80 -compression_level 6 frontend/src/assets/planeta.webp
+```
 
 ## 3. Componentes base
 

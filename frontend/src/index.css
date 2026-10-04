@@ -57,6 +57,7 @@
   --shadow-halo: 0 0 0 4px rgb(169 141 255 / 0.16), 0 0 36px -6px rgb(139 92 255 / 0.55);
   --shadow-poster: 0 18px 40px -16px rgb(4 7 30 / 0.9);
   --shadow-card: 0 30px 80px -30px rgb(4 7 30 / 0.95);
+  --drop-shadow-planet: 0 0 60px rgb(139 92 255 / 0.35);
   --shadow-comet: 0 0 10px 3px rgb(179 155 255 / 0.85);
 
   --animate-twinkle: twinkle 4s ease-in-out infinite alternate;
@@ -133,12 +134,6 @@
 /* Primary brand gradient (buttons, poster placeholder, logo stripes). */
 @utility bg-brand {
   background-image: linear-gradient(90deg, var(--color-blue), var(--color-violet));
-}
-
-/* The floating blue planet in SpaceBackground. */
-@utility planet {
-  background-image: radial-gradient(circle at 32% 30%, var(--color-label), var(--color-blue) 38%, var(--color-raised) 78%);
-  box-shadow: 0 0 60px -6px rgb(79 125 255 / 0.55), inset -14px -18px 30px rgb(11 18 56 / 0.85);
 }
 
 @media (prefers-reduced-motion: reduce) {

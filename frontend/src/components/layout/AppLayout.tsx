@@ -1,13 +1,17 @@
-import { Outlet } from "react-router";
+import { Outlet, useLocation } from "react-router";
 
 import { SpaceBackground } from "@/components/brand/SpaceBackground";
 
 import { Navbar } from "./Navbar";
 
+const HERO_PLANET_ROUTES = ["/login", "/register"];
+
 export function AppLayout() {
+  const { pathname } = useLocation();
+
   return (
     <div className="relative isolate flex min-h-screen flex-col text-fg">
-      <SpaceBackground />
+      <SpaceBackground planet={HERO_PLANET_ROUTES.includes(pathname) ? "hero" : "subtle"} />
       <Navbar />
       <main className="flex-1">
         <Outlet />

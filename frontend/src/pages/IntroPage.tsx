@@ -52,11 +52,11 @@ export function IntroPage() {
   if (finished && status !== "loading") {
     return <Navigate to={status === "authenticated" ? "/discover" : "/login"} replace />;
   }
-  if (!playing) return <SpaceBackground />;
+  if (!playing) return <SpaceBackground planet="hero" />;
 
   return (
     <div className="relative isolate h-screen overflow-hidden">
-      <SpaceBackground />
+      <SpaceBackground planet="hero" />
       <section aria-label="Introducción de MovieVerse" className="absolute inset-0 animate-intro-out">
         <div className="absolute inset-0 flex items-center justify-center">
           <div className="animate-intro-logo">

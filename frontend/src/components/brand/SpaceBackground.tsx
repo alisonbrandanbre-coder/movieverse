@@ -1,3 +1,5 @@
+import planetUrl from "@/assets/planeta.webp";
+
 const STAR_COLORS = ["var(--color-fg)", "var(--color-fg)", "var(--color-label)", "var(--color-violet-soft)"];
 
 /** Small deterministic PRNG so the sky is the same on every render and in every test. */
@@ -26,6 +28,13 @@ const STAR_LAYERS = [
   { size: 2, shadows: starShadows(22, 37), duration: "7s", delay: "-3s" },
 ];
 
+// Hero: big enough to show the artwork's detail (Login, Register, Intro). Subtle: small
+// and translucent so it doesn't compete with the posters.
+const PLANET_SIZES = {
+  hero: "right-[-20%] top-[9%] w-[15rem] opacity-35 sm:right-[-8%] sm:w-[22rem] sm:opacity-75 lg:right-[-5%] lg:top-[6%] lg:w-[420px] lg:opacity-100",
+  subtle: "right-[3%] top-[14%] w-28 opacity-40 sm:w-[180px] sm:opacity-55",
+};
+
 const COMETS = [
   { top: "0", left: "0", delay: "1s" },
   { top: "-5vh", left: "35vw", delay: "5.5s" },
@@ -33,11 +42,18 @@ const COMETS = [
 
 /**
  * The MovieVerse sky: three twinkling star layers, a blue and a violet glow,
- * comets crossing diagonally every ~9 s and a slowly floating planet.
+ * comets crossing diagonally every ~9 s and a slowly floating planet
+ * (`planet="hero"` on Login/Register/Intro, `"subtle"` everywhere else).
  * Fixed behind the page content; purely decorative. With
  * `prefers-reduced-motion` nothing moves and the comets are hidden.
  */
-export function SpaceBackground({ className = "" }: { className?: string }) {
+export function SpaceBackground({
+  planet = "subtle",
+  className = "",
+}: {
+  planet?: keyof typeof PLANET_SIZES;
+  className?: string;
+}) {
   return (
     <div aria-hidden className={`pointer-events-none fixed inset-0 -z-10 overflow-hidden bg-base ${className}`}>
       <div className="absolute -left-48 -top-48 size-[38rem] rounded-full bg-blue/25 blur-[120px]" />
@@ -57,7 +73,14 @@ export function SpaceBackground({ className = "" }: { className?: string }) {
         />
       ))}
 
-      <div className="planet absolute right-[7%] top-[16%] size-20 animate-float rounded-full opacity-50 motion-reduce:animate-none sm:size-32 sm:opacity-90" />
+      {/* The artwork's space background is already cut out (transparent WebP). */}
+      <img
+        src={planetUrl}
+        alt=""
+        loading="lazy"
+        decoding="async"
+        className={`absolute aspect-square animate-float drop-shadow-planet motion-reduce:animate-none ${PLANET_SIZES[planet]}`}
+      />
 
       {COMETS.map((comet) => (
         <div
