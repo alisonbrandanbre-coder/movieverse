@@ -8,6 +8,8 @@ interface ModalProps {
   /** Id of the element that names the dialog (usually its heading). */
   labelledBy: string;
   children: ReactNode;
+  /** `md` (672px, default) or `lg` (1024px, e.g. the surprise's three cards). */
+  size?: "md" | "lg";
   className?: string;
 }
 
@@ -18,7 +20,7 @@ const FOCUSABLE = 'a[href], button:not([disabled]), input:not([disabled]), selec
  * or a click outside; keeps Tab inside, focuses its first control and gives the focus back
  * to whatever opened it. The page behind does not scroll while it is open.
  */
-export function Modal({ open, onClose, labelledBy, children, className = "" }: ModalProps) {
+export function Modal({ open, onClose, labelledBy, children, size = "md", className = "" }: ModalProps) {
   const panelRef = useRef<HTMLDivElement>(null);
   const closeRef = useRef(onClose);
   useEffect(() => {
@@ -72,7 +74,7 @@ export function Modal({ open, onClose, labelledBy, children, className = "" }: M
         aria-modal="true"
         aria-labelledby={labelledBy}
         tabIndex={-1}
-        className={`relative my-auto w-full max-w-2xl animate-fade-up overflow-hidden rounded-card border border-line-strong bg-base shadow-card outline-none ${className}`}
+        className={`relative my-auto w-full ${size === "lg" ? "max-w-5xl" : "max-w-2xl"} animate-fade-up overflow-hidden rounded-card border border-line-strong bg-base shadow-card outline-none ${className}`}
       >
         {children}
         {/* After the content: the focus lands on the dialog's own actions first. */}

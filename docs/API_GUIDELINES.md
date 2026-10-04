@@ -73,7 +73,8 @@ GET /health  →  {"status": "ok", "database": "ok"}   (503 si la DB no responde
 # Movies
 
 ```text
-GET /movies/search?q=interstellar
+GET /movies/search?q=interstellar[&genres=15,17&decade=1990&rating=7&runtime=120]
+GET /movies/discover?genres=15,17&decade=1990&rating=7&runtime=90&page=1
 GET /movies/{id}
 GET /movies/{id}/credits
 GET /movies/onboarding-sample?genres=15,17&avoid=11
@@ -137,6 +138,21 @@ GET /movies/mood/{slug}?page=1
 }
 ```
 
+## Filtros (Buscar y Descubrir)
+
+`/movies/search` y `/movies/discover` aceptan los mismos filtros, todos opcionales (`apps/movies/filters.py`):
+
+| Param | Valores | Significado |
+|---|---|---|
+| `genres` | ids **locales** separados por coma (los de `/preferences/options`) | la película tiene **todos** esos géneros |
+| `decade` | `1950`…`2020` (múltiplo de 10) | estrenada en esa década |
+| `rating` | `6` · `7` · `8` | `vote_average` ≥ valor, con al menos 50 votos |
+| `runtime` | `90` · `120` | duración **menor** a esos minutos |
+
+- **`/movies/discover`** (sin texto): TMDB `/discover/movie` ordenado por popularidad (siempre con ≥ 50 votos). Misma respuesta que la búsqueda, con `query: ""`. Sin filtros devuelve las populares.
+- **`/movies/search` con filtros**: la búsqueda de TMDB no filtra, así que el backend trae las primeras 3 páginas de TMDB (hasta 60 títulos), las filtra y pagina localmente de a 20 (`total_results` / `total_pages` son los del resultado filtrado). Con `runtime`, sólo para las candidatas que pasan el resto de los filtros se piden los detalles (los resultados de búsqueda no traen duración) y quedan cacheados; una duración desconocida no pasa el filtro. Sin filtros, la búsqueda es la de siempre.
+- Valor inválido o género inexistente → `400 VALIDATION_ERROR`.
+
 ## Detail
 
 ```json
@@ -175,7 +191,7 @@ Directores y los 10 primeros actores.
 ```text
 GET  /recommendations
 POST /recommendations/refresh
-GET  /recommendations/surprise?exclude=<id>
+GET  /recommendations/surprise?exclude=<id,id,id>
 ```
 
 Siempre del usuario autenticado. Toda la lógica vive en `RecommendationService` (docs/RECOMMENDER_SPEC.md); el frontend sólo muestra lo que devuelve la API.
@@ -212,17 +228,22 @@ Siempre del usuario autenticado. Toda la lógica vive en `RecommendationService`
 
 ## Surprise
 
-`GET /recommendations/surprise` elige una película al azar entre las 20 mejores recomendaciones del usuario (por `final_score`, de la última generación; si está desactualizada se regenera antes):
+`GET /recommendations/surprise` reparte **hasta 3 películas distintas** al azar entre las 20 mejores recomendaciones del usuario (por `final_score`, de la última generación; si está desactualizada se regenera antes):
 
-- nunca la número 1, nunca una vista o rechazada (aunque se haya marcado después de generar las recomendaciones) y nunca `exclude` (la sorpresa anterior; acepta ids separados por coma);
-- sorteo ponderado por `final_score`, con el doble de peso para `MEDIUM` y `HIDDEN`.
+- nunca la número 1, nunca una vista o rechazada (aunque se haya marcado después de generar las recomendaciones) y nunca las de `exclude` (la tanda anterior: ids separados por coma);
+- cada sorteo pondera por `final_score`, con el doble de peso para `MEDIUM` y `HIDDEN`, y prefiere películas que no compartan ningún género con las ya elegidas (si no hay, las que compartan menos), así las 3 son de géneros distintos cuando se puede;
+- si quedan menos de 3 candidatas, devuelve las que haya.
 
 ```json
 {
-  "movie": {"id": 120, "tmdb_id": 14337, "title": "Primer", "release_year": 2004, "poster_url": "...", "vote_average": 6.9},
-  "section": "HIDDEN_GEMS",
-  "popularity_bucket": "HIDDEN",
-  "explanation": "Porque te gustó Moon y preferís ciencia ficción; es una joya poco conocida."
+  "items": [
+    {
+      "movie": {"id": 120, "tmdb_id": 14337, "title": "Primer", "release_year": 2004, "poster_url": "...", "vote_average": 6.9},
+      "section": "HIDDEN_GEMS",
+      "popularity_bucket": "HIDDEN",
+      "explanation": "Porque te gustó Moon y preferís ciencia ficción; es una joya poco conocida."
+    }
+  ]
 }
 ```
 

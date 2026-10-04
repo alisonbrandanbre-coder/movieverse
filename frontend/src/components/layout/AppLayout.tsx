@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import { Outlet, useLocation } from "react-router";
 
+import { SideConstellation } from "@/components/brand/SideConstellation";
 import { SpaceBackground } from "@/components/brand/SpaceBackground";
 import { SurpriseProvider } from "@/features/recommendations/components/Surprise";
 
@@ -20,9 +21,11 @@ export function AppLayout() {
 
   return (
     <SurpriseProvider>
-      <div className={`relative isolate flex flex-col text-fg ${immersive ? "h-dvh overflow-hidden" : "min-h-screen"}`}>
+      {/* overflow-x-clip: carousels run to the window's edge (bleed-right) without a horizontal scroll. */}
+      <div className={`relative isolate flex flex-col text-fg ${immersive ? "h-dvh overflow-hidden" : "min-h-screen overflow-x-clip"}`}>
         {/* On the map the planets would cover its controls: only the stars stay. */}
         <SpaceBackground planet={immersive ? "none" : HERO_PLANET_ROUTES.includes(pathname) ? "hero" : "subtle"} />
+        {!immersive && !HERO_PLANET_ROUTES.includes(pathname) && <SideConstellation />}
         <Navbar />
         <main className={immersive ? "relative min-h-0 flex-1" : "flex-1"}>
           {/* Keyed by route: every page change fades in (opacity only, see --animate-page-in). */}

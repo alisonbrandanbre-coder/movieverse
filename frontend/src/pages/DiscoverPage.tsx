@@ -10,6 +10,10 @@ import { Card } from "@/components/ui/Card";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { ErrorState } from "@/components/ui/ErrorState";
 import { MovieGridSkeleton } from "@/components/ui/Skeleton";
+import { FilteredMovies } from "@/features/movies/components/FilteredMovies";
+import { MovieFilterPanel } from "@/features/movies/components/MovieFilterPanel";
+import { hasFilters } from "@/features/movies/filters";
+import { useFilterParams } from "@/features/movies/useFilterParams";
 import { RecommendationSection } from "@/features/recommendations/components/RecommendationSection";
 import { SurpriseButton } from "@/features/recommendations/components/Surprise";
 import { useRecommendations, useRefreshRecommendations } from "@/features/recommendations/hooks";
@@ -36,10 +40,15 @@ const SECTIONS: Record<RecommendationSectionKey, { title: string; description: s
   },
 };
 
+/**
+ * Descubrir: the user's recommendations in three sections. With filters (in the URL), the
+ * catalog matching them (TMDB discover) replaces the sections until they are cleared.
+ */
 export function DiscoverPage() {
   const recommendations = useRecommendations();
   const refresh = useRefreshRecommendations();
   const [refreshed, setRefreshed] = useState(false);
+  const { filters, page, setFilters, setPage, clearFilters } = useFilterParams();
 
   const header = (
     <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
@@ -64,10 +73,23 @@ export function DiscoverPage() {
     </div>
   );
 
+  const filterPanel = <MovieFilterPanel filters={filters} onChange={setFilters} />;
+
+  if (hasFilters(filters)) {
+    return (
+      <PageContainer className="flex flex-col gap-8">
+        {header}
+        {filterPanel}
+        <FilteredMovies filters={filters} page={page} onPageChange={setPage} onClearFilters={clearFilters} />
+      </PageContainer>
+    );
+  }
+
   if (recommendations.isPending) {
     return (
       <PageContainer className="flex flex-col gap-8">
         {header}
+        {filterPanel}
         <MovieGridSkeleton label="Buscando películas para vos…" />
       </PageContainer>
     );
@@ -76,6 +98,7 @@ export function DiscoverPage() {
     return (
       <PageContainer className="flex flex-col gap-8">
         {header}
+        {filterPanel}
         <ErrorState
           title="No pudimos cargar tus recomendaciones"
           message={getErrorMessage(recommendations.error)}
@@ -91,6 +114,7 @@ export function DiscoverPage() {
   return (
     <PageContainer className="flex flex-col gap-10">
       {header}
+      {filterPanel}
 
       <p role="status" className={`-mt-6 min-h-5 text-sm ${refresh.isError ? "text-danger" : "text-violet-soft"}`}>
         {refresh.isError

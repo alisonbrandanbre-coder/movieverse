@@ -21,7 +21,7 @@ export function MovieHero({ movie }: { movie: MovieDetail }) {
           <div className="absolute inset-0 bg-linear-to-r from-base/80 via-transparent to-base/40" />
         </div>
       )}
-      <div className="mx-auto flex max-w-6xl flex-col gap-8 px-4 pb-6 pt-20 sm:flex-row sm:items-start sm:px-6 sm:pt-40">
+      <div className="mx-auto flex max-w-page flex-col gap-8 px-4 pb-6 pt-20 sm:flex-row sm:items-start sm:px-6 sm:pt-40">
         <PosterImage
           src={movie.posterUrl}
           alt={`Póster de ${movie.title}`}

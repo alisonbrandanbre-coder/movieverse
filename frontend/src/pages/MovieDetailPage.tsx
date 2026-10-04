@@ -37,7 +37,7 @@ export function MovieDetailPage() {
   const { data } = movie;
   return (
     <article className="relative">
-      <div className="absolute inset-x-0 top-5 z-10 mx-auto max-w-6xl px-4 sm:px-6">
+      <div className="absolute inset-x-0 top-5 z-10 mx-auto max-w-page px-4 sm:px-6">
         <button
           type="button"
           onClick={() => navigate(-1)}

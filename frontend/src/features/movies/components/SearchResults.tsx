@@ -3,16 +3,15 @@ import { SearchX, Sparkles, TrendingUp } from "lucide-react";
 import { getErrorMessage } from "@/api/client";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { ErrorState } from "@/components/ui/ErrorState";
-import { MovieGridSkeleton } from "@/components/ui/Skeleton";
-import { Pagination } from "@/components/ui/Pagination";
-
-import { SEARCH_MIN_LENGTH } from "../api";
 import { InlineError } from "@/components/ui/InlineError";
+import { MovieGridSkeleton } from "@/components/ui/Skeleton";
 import { useRecommendations } from "@/features/recommendations/hooks";
 
+import { SEARCH_MIN_LENGTH } from "../api";
+import { hasFilters, NO_FILTERS, type MovieFilters } from "../filters";
 import { useMovieSearch, useTrending } from "../hooks";
+import { FilteredMovies, NoMatches, ResultsGrid } from "./FilteredMovies";
 import { MovieCarousel } from "./MovieCarousel";
-import { MovieGrid } from "./MovieGrid";
 
 /** Before typing: something to start from instead of an empty page. */
 function SearchSuggestions() {
@@ -43,13 +42,27 @@ interface SearchResultsProps {
   query: string;
   page: number;
   onPageChange: (page: number) => void;
+  filters?: MovieFilters;
+  onClearFilters?: () => void;
 }
 
-export function SearchResults({ query, page, onPageChange }: SearchResultsProps) {
-  const search = useMovieSearch(query, page);
+/**
+ * Results of Buscar: with a text, TMDB's search (filtered by the backend when there are
+ * filters); without a text, the filtered catalog or, with no filters, some suggestions.
+ */
+export function SearchResults({ query, page, onPageChange, filters = NO_FILTERS, onClearFilters = () => undefined }: SearchResultsProps) {
   const trimmed = query.trim();
+  const hasText = trimmed.length >= SEARCH_MIN_LENGTH;
+  const filtered = hasFilters(filters);
+  const search = useMovieSearch(hasText ? trimmed : "", page, filters);
 
-  if (trimmed.length < SEARCH_MIN_LENGTH) return <SearchSuggestions />;
+  if (!hasText) {
+    return filtered ? (
+      <FilteredMovies filters={filters} page={page} onPageChange={onPageChange} onClearFilters={onClearFilters} />
+    ) : (
+      <SearchSuggestions />
+    );
+  }
   if (search.isPending) return <MovieGridSkeleton label="Buscando películas…" />;
   if (search.isError) {
     return (
@@ -61,9 +74,14 @@ export function SearchResults({ query, page, onPageChange }: SearchResultsProps)
     );
   }
 
-  const { results, totalResults, totalPages } = search.data;
+  const { results, totalResults } = search.data;
   if (results.length === 0) {
-    return (
+    return filtered ? (
+      <NoMatches
+        description={`Ninguna película para “${trimmed}” cumple esos filtros. Probá sacando alguno.`}
+        onClearFilters={onClearFilters}
+      />
+    ) : (
       <EmptyState
         icon={SearchX}
         title="Sin resultados"
@@ -73,12 +91,12 @@ export function SearchResults({ query, page, onPageChange }: SearchResultsProps)
   }
 
   return (
-    <div className={`flex flex-col gap-6 transition-opacity ${search.isPlaceholderData ? "opacity-60" : ""}`}>
-      <p className="text-sm text-fg-secondary" aria-live="polite">
-        {totalResults.toLocaleString("es")} {totalResults === 1 ? "resultado" : "resultados"} para “{trimmed}”
-      </p>
-      <MovieGrid movies={results} />
-      <Pagination page={page} totalPages={totalPages} onPageChange={onPageChange} />
-    </div>
+    <ResultsGrid
+      data={search.data}
+      stale={search.isPlaceholderData}
+      page={page}
+      onPageChange={onPageChange}
+      label={`${totalResults.toLocaleString("es")} ${totalResults === 1 ? "resultado" : "resultados"} para “${trimmed}”${filtered ? " con estos filtros" : ""}`}
+    />
   );
 }

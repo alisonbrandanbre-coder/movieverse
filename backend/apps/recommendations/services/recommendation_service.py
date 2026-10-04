@@ -20,7 +20,7 @@ from django.utils import timezone
 from apps.accounts.models import User
 from apps.common.exceptions import ServiceError
 from apps.interactions.models import Interaction, InteractionType
-from apps.movies.models import MoviePerson
+from apps.movies.models import Movie, MoviePerson
 from apps.movies.services.movie_service import MovieService
 from apps.preferences.services import TasteProfileService
 from apps.preferences.taste import Seed, Taste
@@ -44,6 +44,7 @@ LESSER_KNOWN = (PopularityBucket.MEDIUM, PopularityBucket.HIDDEN)
 # Surprise mode: a weighted draw among the best recommendations, never the obvious #1.
 SURPRISE_POOL = 20
 SURPRISE_LESSER_KNOWN_BOOST = 2.0  # MEDIUM / HIDDEN titles are twice as likely
+SURPRISE_SIZE = 3  # the dialog deals three cards
 
 FALLBACK_NOTICE = (
     "Todavía no completaste el onboarding: te mostramos películas populares y bien "
@@ -93,13 +94,20 @@ class RecommendationService:
         return self._load(self._generate(user, TasteProfileService.taste(user)))
 
     def surprise(
-        self, user: User, exclude: frozenset[int] = frozenset(), rng: random.Random | None = None
-    ) -> RecommendationSnapshot:
-        """Surprise mode (EPIC 4): a random pick among the user's ~20 best recommendations.
+        self,
+        user: User,
+        exclude: frozenset[int] = frozenset(),
+        rng: random.Random | None = None,
+        size: int = SURPRISE_SIZE,
+    ) -> list[RecommendationSnapshot]:
+        """Surprise mode (EPIC 4): up to `size` different movies drawn among the user's ~20
+        best recommendations.
 
         Not the #1 (that one is already first in Descubrir) and not `exclude` (the previous
-        surprise). Watched and rejected titles are skipped even if marked after the run was
-        generated. The draw is weighted by score, lesser-known titles count double. Raises
+        batch). Watched and rejected titles are skipped even if marked after the run was
+        generated. Each draw is weighted by score, lesser-known titles count double, and
+        prefers movies sharing no genre with the ones already drawn (the fewest shared
+        genres when that is not possible), so the cards feel different. Raises
         `NoSurprise` when nothing is left.
         """
         rows = sorted(
@@ -114,12 +122,30 @@ class RecommendationService:
         pool = [r for r in rows[1:] if r.movie_id not in marked and r.movie_id not in exclude]
         if not pool:
             raise NoSurprise()
-        weights = [
-            max(row.final_score, 0.01)
-            * (SURPRISE_LESSER_KNOWN_BOOST if row.popularity_bucket in LESSER_KNOWN else 1.0)
-            for row in pool
-        ]
-        return (rng or random).choices(pool, weights=weights, k=1)[0]
+        genres: dict[int, set[int]] = {r.movie_id: set() for r in pool}
+        through = Movie.genres.through
+        for movie_id, genre_id in through.objects.filter(movie_id__in=genres).values_list(
+            "movie_id", "genre_id"
+        ):
+            genres[movie_id].add(genre_id)
+
+        rng = rng or random
+        picks: list[RecommendationSnapshot] = []
+        drawn_genres: set[int] = set()
+        while pool and len(picks) < size:
+            overlap = {r.movie_id: len(genres[r.movie_id] & drawn_genres) for r in pool}
+            fewest = min(overlap.values())
+            tier = [r for r in pool if overlap[r.movie_id] == fewest]
+            pick = rng.choices(tier, weights=[self._surprise_weight(r) for r in tier], k=1)[0]
+            picks.append(pick)
+            drawn_genres |= genres[pick.movie_id]
+            pool.remove(pick)
+        return picks
+
+    @staticmethod
+    def _surprise_weight(row: RecommendationSnapshot) -> float:
+        boost = SURPRISE_LESSER_KNOWN_BOOST if row.popularity_bucket in LESSER_KNOWN else 1.0
+        return max(row.final_score, 0.01) * boost
 
     def rank(self, taste: Taste) -> tuple[dict[str, list[Scored]], bool]:
         """Scored picks per section for a taste, without persisting: (sections, degraded)."""

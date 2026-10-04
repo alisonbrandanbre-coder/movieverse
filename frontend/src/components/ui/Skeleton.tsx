@@ -22,7 +22,7 @@ export function MovieCardSkeleton({ className = "" }: { className?: string }) {
 export function MovieGridSkeleton({ count = 10, label = "Cargando películas…" }: { count?: number; label?: string }) {
   return (
     <div role="status" aria-label={label}>
-      <ul className="grid grid-cols-2 gap-x-4 gap-y-8 sm:grid-cols-3 sm:gap-x-5 md:grid-cols-4 lg:grid-cols-5">
+      <ul className="grid grid-cols-2 gap-x-4 gap-y-8 sm:grid-cols-3 sm:gap-x-5 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-7">
         {Array.from({ length: count }, (_, i) => (
           <li key={i}>
             <MovieCardSkeleton />
@@ -49,7 +49,7 @@ export function MovieDetailSkeleton() {
   return (
     <div role="status" aria-label="Cargando película…" className="relative">
       <Skeleton className="h-64 w-full rounded-none opacity-50 sm:h-80" />
-      <div className="mx-auto -mt-40 flex max-w-6xl flex-col gap-6 px-4 sm:-mt-48 sm:flex-row sm:px-6">
+      <div className="mx-auto -mt-40 flex max-w-page flex-col gap-6 px-4 sm:-mt-48 sm:flex-row sm:px-6">
         <Skeleton className="aspect-[2/3] w-44 shrink-0 rounded-poster sm:w-60" />
         <div className="flex flex-1 flex-col gap-4 pt-4 sm:pt-28">
           <Skeleton className="h-12 w-3/4" />

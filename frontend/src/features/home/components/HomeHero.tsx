@@ -44,7 +44,7 @@ export function HomeHero({ movies }: { movies: MovieCard[] | undefined }) {
     return (
       <div role="status" aria-label="Cargando películas destacadas" className="relative h-[68vh] min-h-[26rem] max-h-[44rem] w-full overflow-hidden">
         <Skeleton className="absolute inset-0 rounded-none opacity-60" />
-        <div className="absolute inset-x-0 bottom-0 mx-auto flex max-w-6xl flex-col gap-4 px-4 pb-14 sm:px-6">
+        <div className="absolute inset-x-0 bottom-0 mx-auto flex max-w-page flex-col gap-4 px-4 pb-14 sm:px-6">
           <Skeleton className="h-4 w-40" />
           <Skeleton className="h-14 w-3/4 max-w-xl" />
           <Skeleton className="h-4 w-full max-w-lg" />
@@ -84,7 +84,7 @@ export function HomeHero({ movies }: { movies: MovieCard[] | undefined }) {
       <div aria-hidden className="absolute inset-0 bg-linear-to-t from-base via-base/70 to-base/10" />
       <div aria-hidden className="absolute inset-0 bg-linear-to-r from-base/90 via-base/40 to-transparent" />
 
-      <div className="absolute inset-x-0 bottom-0 mx-auto max-w-6xl px-4 pb-12 sm:px-6 sm:pb-16">
+      <div className="absolute inset-x-0 bottom-0 mx-auto max-w-page px-4 pb-12 sm:px-6 sm:pb-16">
         <div key={current.id} aria-live={paused ? "polite" : "off"} className="flex max-w-2xl animate-fade-up flex-col gap-3">
           <p className="eyebrow">Tendencia de la semana</p>
           <h2 className="font-display text-5xl leading-[0.95] tracking-wide text-fg drop-shadow-[0_2px_16px_var(--color-deep)] sm:text-7xl">

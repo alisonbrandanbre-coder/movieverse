@@ -55,6 +55,9 @@
   --text-md: 1rem;
   --text-md--line-height: 1.5rem;
 
+  /* Main column: wide screens use the room (1600px), see `max-w-page`. */
+  --container-page: 100rem;
+
   --radius-control: 12px;
   --radius-poster: 14px;
   --radius-card: 20px;
@@ -79,6 +82,8 @@
   /* Home hero: the background image slowly zooms (Ken Burns), paused with reduced motion. */
   --animate-hero-zoom: hero-zoom 14s ease-out both;
   --animate-pop: pop 0.35s ease-out;
+  /* Surprise cards: the ticket turns over (rotateY) to show the movie. */
+  --animate-ticket-in: ticket-in 0.5s cubic-bezier(0.2, 0.9, 0.3, 1.2) both;
   --animate-node-in: node-in 0.55s cubic-bezier(0.2, 0.9, 0.3, 1.25) both;
   --animate-edge-in: edge-in 0.7s ease-out both;
   --animate-star-in: star-in 1.8s ease-in-out infinite;
@@ -108,6 +113,10 @@
   @keyframes hero-zoom {
     from { transform: scale(1.08); }
     to { transform: scale(1); }
+  }
+  @keyframes ticket-in {
+    from { opacity: 0; transform: translateY(24px) scale(0.92); }
+    to { opacity: 1; transform: none; }
   }
   @keyframes pop {
     0% { transform: scale(1); }
@@ -190,6 +199,28 @@
   &::-webkit-scrollbar {
     display: none;
   }
+}
+
+/* A row that overflows its centered container up to the right edge of the window (the
+   carousels). The layout clips the horizontal overflow, so `100vw` never adds a scrollbar. */
+@utility bleed-right {
+  margin-right: calc(50% - 50vw);
+}
+
+/* Fades a scrollable row out on its right edge ("there is more, swipe"). */
+@utility fade-right {
+  mask-image: linear-gradient(to right, black calc(100% - 7rem), transparent);
+}
+
+/* Back of a surprise card: a starry pattern (violet dots on night blue) for the cinema ticket. */
+@utility bg-ticket {
+  background-color: var(--color-raised);
+  background-image:
+    radial-gradient(circle at 20% 30%, rgb(179 155 255 / 0.55) 0 1px, transparent 1.5px),
+    radial-gradient(circle at 70% 65%, rgb(238 242 255 / 0.45) 0 1px, transparent 1.5px),
+    radial-gradient(circle at 45% 85%, rgb(159 192 255 / 0.4) 0 0.8px, transparent 1.3px),
+    linear-gradient(160deg, rgb(79 125 255 / 0.25), rgb(139 92 255 / 0.3));
+  background-size: 34px 34px, 46px 46px, 28px 28px, 100% 100%;
 }
 
 /* Skeleton surface: night-blue block with a light sweeping across (animate-shimmer). */

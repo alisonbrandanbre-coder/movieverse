@@ -15,6 +15,8 @@ interface CarouselProps {
  * Horizontal row with a heading and ‹ › arrows that scroll one "page" smoothly. Also
  * scrolls with swipe, trackpad and (once focused) the arrow keys; the scrollbar is hidden.
  * Arrows hide at each end and on touch screens. Children are the row's items.
+ * The row starts aligned with the title and runs to the right edge of the window, fading
+ * out there while there is more to see.
  */
 export function Carousel({ title, description, icon: Icon, action, children, className = "" }: CarouselProps) {
   const headingId = useId();
@@ -78,7 +80,7 @@ export function Carousel({ title, description, icon: Icon, action, children, cla
         tabIndex={0}
         role="group"
         aria-label={`${title} (desplazable)`}
-        className="-mx-4 flex snap-x snap-mandatory scroll-px-4 gap-4 overflow-x-auto px-4 pb-3 pt-2 scrollbar-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus sm:-mx-6 sm:scroll-px-6 sm:gap-5 sm:px-6"
+        className={`-ml-4 flex snap-x snap-mandatory scroll-px-4 gap-4 overflow-x-auto pb-3 pl-4 pr-16 pt-2 scrollbar-none bleed-right focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus sm:-ml-6 sm:scroll-px-6 sm:gap-5 sm:pl-6 ${edges.end ? "" : "fade-right"}`}
       >
         {children}
       </div>

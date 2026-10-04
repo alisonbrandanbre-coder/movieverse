@@ -7,6 +7,7 @@ Cache policy (docs/SPRINT_1_REPORT.md → "Persistencia"):
 """
 
 import logging
+import math
 from collections.abc import Callable
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
@@ -19,6 +20,7 @@ from django.db.models import Count, Q
 from django.utils import timezone
 
 from ..exceptions import CatalogRateLimited, CatalogUnavailable, MoodNotFound, MovieNotFound
+from ..filters import MovieFilters
 from ..models import Genre, Movie, MoviePerson, Person, TMDBListCache
 from ..moods import BASE_PARAMS, MOODS
 from .normalizers import (
@@ -45,6 +47,12 @@ TMDB_PARALLEL_CALLS = 6
 TRENDING_MAX_AGE = timedelta(hours=6)
 HOME_LIST_SIZE = 20
 MOOD_MAX_PAGE = 5
+
+# Filtered search: TMDB's search has no filters, so its first pages are filtered here and
+# paginated locally (a bounded scan keeps TMDB calls and latency predictable).
+FILTERED_SEARCH_TMDB_PAGES = 3
+FILTERED_PAGE_SIZE = 20
+TMDB_MAX_PAGE = 500
 
 TMDBFetch = Callable[[TMDBClient], dict[str, Any]]
 # Values that change often in TMDB and are refreshed on every search hit.
@@ -92,7 +100,11 @@ class MovieService:
 
     # ------------------------------------------------------------ search
 
-    def search(self, query: str, page: int = 1) -> SearchResult:
+    def search(
+        self, query: str, page: int = 1, filters: MovieFilters | None = None
+    ) -> SearchResult:
+        if filters is not None and filters.active:
+            return self._filtered_search(query, page, filters)
         try:
             payload = self.client.search_movies(query, page=page)
         except TMDBError as exc:
@@ -107,6 +119,73 @@ class MovieService:
             total_results=int(payload.get("total_results") or 0),
             movies=movies,
         )
+
+    def _filtered_search(self, query: str, page: int, filters: MovieFilters) -> SearchResult:
+        """The first TMDB search pages, filtered here and paginated locally.
+
+        A runtime filter needs each candidate's details (search results have no runtime);
+        they are fetched in parallel once and cached like any other detail.
+        """
+        try:
+            first = self.client.search_movies(query, page=1)
+        except TMDBError as exc:
+            raise _to_api_error(exc) from exc
+        pages = min(int(first.get("total_pages") or 0), FILTERED_SEARCH_TMDB_PAGES)
+        payloads = [first]
+        rest = self._fetch_parallel(
+            {
+                str(n): (lambda client, n=n: client.search_movies(query, page=n))
+                for n in range(2, pages + 1)
+            }
+        )
+        for n in range(2, pages + 1):
+            result = rest[str(n)]
+            if isinstance(result, TMDBError):  # keep what we have
+                logger.warning("Filtered search page %s failed: %r", n, result)
+                continue
+            payloads.append(result)
+
+        seen: dict[int, dict] = {}
+        for payload in payloads:
+            for r in payload.get("results") or []:
+                if isinstance(r.get("id"), int):
+                    seen.setdefault(r["id"], r)
+        movies = self._upsert_summaries(list(seen.values()))
+        if filters.max_runtime is not None:
+            # Only the ones that pass the cheap filters need their runtime.
+            cheap = MovieFilters(filters.genre_tmdb_ids, filters.decade, filters.min_rating)
+            self.ensure_details([m for m in self._with_genres(movies) if cheap.matches(m)])
+        matching = [m for m in self._with_genres(movies) if filters.matches(m)]
+
+        start = (page - 1) * FILTERED_PAGE_SIZE
+        return SearchResult(
+            query=query,
+            page=page,
+            total_pages=math.ceil(len(matching) / FILTERED_PAGE_SIZE),
+            total_results=len(matching),
+            movies=matching[start : start + FILTERED_PAGE_SIZE],
+        )
+
+    def discover(self, filters: MovieFilters, page: int = 1) -> SearchResult:
+        """TMDB `/discover/movie` with the Buscar / Descubrir filters, by popularity."""
+        try:
+            payload = self.client.discover_movies(filters.discover_params(), page=page)
+        except TMDBError as exc:
+            raise _to_api_error(exc) from exc
+        results = [r for r in payload.get("results") or [] if isinstance(r.get("id"), int)]
+        return SearchResult(
+            query="",
+            page=int(payload.get("page") or page),
+            total_pages=min(int(payload.get("total_pages") or 0), TMDB_MAX_PAGE),
+            total_results=int(payload.get("total_results") or 0),
+            movies=self._upsert_summaries(results),
+        )
+
+    @staticmethod
+    def _with_genres(movies: list[Movie]) -> list[Movie]:
+        """Fresh rows with their genres prefetched, in the same order."""
+        by_id = Movie.objects.prefetch_related("genres").in_bulk([m.pk for m in movies])
+        return [by_id[m.pk] for m in movies if m.pk in by_id]
 
     # ------------------------------------------------------------ single movie
 
@@ -253,6 +332,24 @@ class MovieService:
             for key, entry in entries.items()
         }
         return CachedLists(lists=lists, failed=failed)
+
+    def ensure_details(self, movies: list[Movie]) -> None:
+        """Sync the full details (runtime, genres…) of the movies that only have a summary
+        (parallel, best effort: a failure leaves the summary)."""
+        missing = {str(m.pk): m for m in movies if m.metadata_synced_at is None}
+        calls = {
+            key: (lambda client, tmdb_id=movie.tmdb_id: client.get_movie_details(tmdb_id))
+            for key, movie in missing.items()
+        }
+        for key, result in self._fetch_parallel(calls).items():
+            if isinstance(result, TMDBError):
+                logger.warning("Could not sync details for movie %s: %r", key, result)
+                continue
+            movie = missing[key]
+            with transaction.atomic():
+                for field, value in normalize_movie_details(result).items():
+                    setattr(movie, field, value)
+                self._apply_details(movie, result)
 
     def ensure_credits(self, movies: list[Movie]) -> None:
         """Sync credits of the movies that never had them (parallel, best effort)."""

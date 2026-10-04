@@ -1,6 +1,6 @@
 import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import { AppRoutes } from "@/AppRoutes";
 import { apiError, jsonResponse, mockFetch, pending } from "@/test/fetchMock";
@@ -179,41 +179,76 @@ describe("Surprise mode", () => {
       explanation: `Porque preferís ciencia ficción; ${title} es una joya poco conocida.`,
     };
   }
+  const hand = (...items: ReturnType<typeof surprise>[]) => jsonResponse({ items });
+  const FIRST = () => hand(surprise(20, "Coherence"), surprise(21, "Moon", "MEDIUM"), surprise(22, "Paddington", "POPULAR"));
+  const SECOND = () => hand(surprise(30, "Primer"), surprise(31, "Arrival", "POPULAR"), surprise(32, "Amélie", "MEDIUM"));
 
-  it("opens a dialog with the pick, why, and its next steps; «Otra» never repeats it", async () => {
-    const draws = [surprise(20, "Coherence"), surprise(21, "Moon", "MEDIUM")];
-    const fetchMock = renderDiscover({
-      "GET /recommendations": () => jsonResponse(recommendations()),
-      "GET /recommendations/surprise": () => jsonResponse(draws.shift()),
-    });
+  const cardButton = (dialog: HTMLElement, title: string) => within(dialog).findByRole("button", { name: new RegExp(`^${title}`) });
+
+  it("deals three face-down tickets that turn over into three different movies", async () => {
+    renderDiscover({ "GET /recommendations": () => jsonResponse(recommendations()), "GET /recommendations/surprise": FIRST });
 
     await userEvent.click(await screen.findByRole("button", { name: "Sorprendeme" }));
 
-    const dialog = await screen.findByRole("dialog", { name: "Coherence" });
-    expect(within(dialog).getByText("Porque preferís ciencia ficción; Coherence es una joya poco conocida.")).toBeInTheDocument();
+    const dialog = await screen.findByRole("dialog", { name: "Elegí tu función" });
+    // Face down first: the movies are not exposed until their ticket turns over.
+    expect(within(dialog).queryByRole("button", { name: /^Coherence/ })).not.toBeInTheDocument();
+    expect(within(dialog).getAllByText(/Entrada · Función/)).toHaveLength(3);
+
+    const titles = ["Coherence", "Moon", "Paddington"];
+    for (const title of titles) expect(await cardButton(dialog, title)).toHaveAttribute("aria-pressed", "false");
+    expect(within(dialog).getByText("Porque preferís ciencia ficción; Moon es una joya poco conocida.")).toBeInTheDocument();
     expect(within(dialog).getByText("Joya poco conocida")).toBeInTheDocument();
-    expect(within(dialog).getByRole("img", { name: "Póster de Coherence" })).toBeInTheDocument();
-    expect(within(dialog).getByRole("link", { name: /Ver ficha/ })).toHaveAttribute("href", "/movies/20");
-    expect(within(dialog).getByRole("link", { name: /Explorar universo/ })).toHaveAttribute("href", "/universe/20");
+    expect(within(dialog).getByText("Para descubrir")).toBeInTheDocument();
+    expect(within(dialog).getByText("Popular")).toBeInTheDocument();
+    expect(within(dialog).getAllByLabelText(/^Puntuación/)).toHaveLength(3);
+    expect(await within(dialog).findByText("Tus sorpresas: Coherence, Moon, Paddington.")).toBeInTheDocument();
+  });
 
-    await userEvent.click(within(dialog).getByRole("button", { name: "Otra" }));
+  it("highlights the chosen card with its next steps; «Otras 3» excludes the batch on screen", async () => {
+    const hands = [FIRST, SECOND];
+    const fetchMock = renderDiscover({
+      "GET /recommendations": () => jsonResponse(recommendations()),
+      "GET /recommendations/surprise": () => hands.shift()!(),
+    });
+    await userEvent.click(await screen.findByRole("button", { name: "Sorprendeme" }));
+    const dialog = await screen.findByRole("dialog", { name: "Elegí tu función" });
+    expect(within(dialog).queryByRole("link", { name: /Ver ficha/ })).not.toBeInTheDocument();
 
-    expect(await screen.findByRole("dialog", { name: "Moon" })).toBeInTheDocument();
+    await userEvent.click(await cardButton(dialog, "Moon"));
+
+    expect(await cardButton(dialog, "Moon")).toHaveAttribute("aria-pressed", "true");
+    expect(within(dialog).getByRole("link", { name: /Ver ficha/ })).toHaveAttribute("href", "/movies/21");
+    expect(within(dialog).getByRole("link", { name: /Explorar universo/ })).toHaveAttribute("href", "/universe/21");
+
+    await userEvent.click(within(dialog).getByRole("button", { name: "Otras 3" }));
+
+    const next = await screen.findByRole("dialog", { name: "Elegí tu función" });
+    expect(await cardButton(next, "Arrival")).toBeInTheDocument();
+    expect(within(next).queryByText("Moon")).not.toBeInTheDocument();
     const calls = fetchMock.mock.calls.map(([url]) => String(url)).filter((url) => url.includes("/surprise"));
     expect(new URL(calls[0]).searchParams.get("exclude")).toBeNull();
-    expect(new URL(calls[1]).searchParams.get("exclude")).toBe("20"); // never the one on screen
+    expect(new URL(calls[1]).searchParams.get("exclude")).toBe("20,21,22"); // never the batch on screen
+  });
+
+  it("shows every card at once, without flipping, with reduced motion", async () => {
+    vi.stubGlobal("matchMedia", (query: string) => ({ matches: query.includes("reduce"), media: query, addEventListener() {}, removeEventListener() {} }));
+    renderDiscover({ "GET /recommendations": () => jsonResponse(recommendations()), "GET /recommendations/surprise": FIRST });
+
+    await userEvent.click(await screen.findByRole("button", { name: "Sorprendeme" }));
+
+    const dialog = await screen.findByRole("dialog", { name: "Elegí tu función" });
+    expect(within(dialog).getByRole("button", { name: /^Coherence/ })).toBeInTheDocument();
+    expect(within(dialog).getByRole("button", { name: /^Paddington/ })).toBeInTheDocument();
   });
 
   it("is also in the main menu, closes with Escape and gives the focus back", async () => {
-    renderDiscover({
-      "GET /recommendations": () => jsonResponse(recommendations()),
-      "GET /recommendations/surprise": () => jsonResponse(surprise(20, "Coherence")),
-    });
+    renderDiscover({ "GET /recommendations": () => jsonResponse(recommendations()), "GET /recommendations/surprise": FIRST });
     const nav = await screen.findByRole("navigation", { name: "Principal" });
     const trigger = await within(nav).findByRole("button", { name: "Sorprendeme" });
 
     await userEvent.click(trigger);
-    expect(await screen.findByRole("dialog", { name: "Coherence" })).toBeInTheDocument();
+    expect(await screen.findByRole("dialog", { name: "Elegí tu función" })).toBeInTheDocument();
     await userEvent.keyboard("{Escape}");
 
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
@@ -238,8 +273,7 @@ describe("Surprise mode", () => {
     let fail = true;
     renderDiscover({
       "GET /recommendations": () => jsonResponse(recommendations()),
-      "GET /recommendations/surprise": () =>
-        fail ? apiError(503, "TMDB_UNAVAILABLE", "El catálogo no está disponible.") : jsonResponse(surprise(20, "Coherence")),
+      "GET /recommendations/surprise": () => (fail ? apiError(503, "TMDB_UNAVAILABLE", "El catálogo no está disponible.") : FIRST()),
     });
 
     await userEvent.click(await screen.findByRole("button", { name: "Sorprendeme" }));
@@ -248,6 +282,6 @@ describe("Surprise mode", () => {
 
     fail = false;
     await userEvent.click(within(dialog).getByRole("button", { name: "Reintentar" }));
-    expect(await screen.findByRole("dialog", { name: "Coherence" })).toBeInTheDocument();
+    expect(await screen.findByRole("dialog", { name: "Elegí tu función" })).toBeInTheDocument();
   });
 });

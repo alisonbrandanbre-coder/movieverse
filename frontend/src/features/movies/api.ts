@@ -12,6 +12,8 @@ import type {
   MovieSummary,
 } from "@/types/movie";
 
+import { filtersKey, hasFilters, NO_FILTERS, toQuery, type MovieFilters } from "./filters";
+
 export interface MovieSummaryDto {
   id: number;
   tmdb_id: number;
@@ -80,7 +82,12 @@ export const movieKeys = {
   all: ["movies"] as const,
   trending: ["movies", "trending"] as const,
   mood: (slug: string, page: number) => ["movies", "mood", slug, page] as const,
-  search: (query: string, page: number) => ["movies", "search", query, page] as const,
+  // Without filters the key is the autocomplete's too (shared cache).
+  search: (query: string, page: number, filters: MovieFilters = NO_FILTERS) =>
+    hasFilters(filters)
+      ? (["movies", "search", query, page, filtersKey(filters)] as const)
+      : (["movies", "search", query, page] as const),
+  discover: (filters: MovieFilters, page: number) => ["movies", "discover", filtersKey(filters), page] as const,
   detail: (id: number) => ["movies", "detail", id] as const,
   credits: (id: number) => ["movies", "credits", id] as const,
 };
@@ -119,8 +126,7 @@ function toCastMember(dto: CastMemberDto): CastMember {
   return { ...toDirector(dto), character: dto.character, order: dto.order };
 }
 
-export async function searchMovies(query: string, page = 1, signal?: AbortSignal): Promise<MovieSearchPage> {
-  const dto = await apiRequest<MovieSearchDto>("/movies/search", { params: { q: query, page }, signal });
+function toSearchPage(dto: MovieSearchDto): MovieSearchPage {
   return {
     query: dto.query,
     page: dto.page,
@@ -128,6 +134,23 @@ export async function searchMovies(query: string, page = 1, signal?: AbortSignal
     totalResults: dto.total_results,
     results: dto.results.map(toSummary),
   };
+}
+
+/** Search by title; with filters, the backend filters TMDB's results. */
+export async function searchMovies(
+  query: string,
+  page = 1,
+  signal?: AbortSignal,
+  filters: MovieFilters = NO_FILTERS,
+): Promise<MovieSearchPage> {
+  return toSearchPage(
+    await apiRequest<MovieSearchDto>("/movies/search", { params: { q: query, page, ...toQuery(filters) }, signal }),
+  );
+}
+
+/** Catalog by filters without a text (TMDB discover, by popularity). */
+export async function discoverMovies(filters: MovieFilters, page = 1, signal?: AbortSignal): Promise<MovieSearchPage> {
+  return toSearchPage(await apiRequest<MovieSearchDto>("/movies/discover", { params: { page, ...toQuery(filters) }, signal }));
 }
 
 export async function getMovie(id: number, signal?: AbortSignal): Promise<MovieDetail> {

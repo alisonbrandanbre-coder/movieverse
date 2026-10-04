@@ -190,7 +190,8 @@ Base `/api/v1`, autenticación JWT (`Authorization: Bearer …`). Los errores ti
 | GET | `/health` | Estado de la API y la base de datos (sin auth) |
 | POST | `/auth/register` · `/auth/login` · `/auth/refresh` · `/auth/logout` | Cuenta y sesión |
 | GET | `/auth/me` | Usuario autenticado |
-| GET | `/movies/search?q=&page=` | Búsqueda en TMDB (resultados cacheados localmente) |
+| GET | `/movies/search?q=&page=` | Búsqueda en TMDB (resultados cacheados localmente); acepta los filtros `genres`, `decade`, `rating`, `runtime` |
+| GET | `/movies/discover?genres=&decade=&rating=&runtime=&page=` | Catálogo filtrado sin texto (TMDB discover) |
 | GET | `/movies/trending` | Tendencias de la semana (caché de 6 h) |
 | GET | `/movies/mood/{slug}?page=` | Películas para un estado de ánimo de la Home |
 | GET | `/movies/{id}` · `/movies/{id}/credits` | Ficha y créditos |
@@ -200,7 +201,7 @@ Base `/api/v1`, autenticación JWT (`Authorization: Bearer …`). Los errores ti
 | GET · POST · DELETE | `/movies/{id}/interactions[/{type}]` | Favorita, pendiente, vista, like, dislike |
 | GET | `/me/favorites` · `/me/watchlist` · `/me/watched` · `/me/likes` | Listas del usuario |
 | GET | `/recommendations` · POST `/recommendations/refresh` | Recomendaciones en 3 secciones, con score y explicación |
-| GET | `/recommendations/surprise?exclude=` | Modo sorpresa |
+| GET | `/recommendations/surprise?exclude=` | Modo sorpresa: 3 películas distintas (`exclude` = la tanda anterior) |
 | GET | `/graph/movies/{id}?limit=12` | Vecindario de una película en el mapa |
 | GET | `/graph/movies/{id}/saga` | Todas las películas de su saga |
 

@@ -1,15 +1,36 @@
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 
-import { getMood, getMovie, getMovieCredits, getTrending, movieKeys, SEARCH_MIN_LENGTH, searchMovies } from "./api";
+import {
+  discoverMovies,
+  getMood,
+  getMovie,
+  getMovieCredits,
+  getTrending,
+  movieKeys,
+  SEARCH_MIN_LENGTH,
+  searchMovies,
+} from "./api";
+import { NO_FILTERS, type MovieFilters } from "./filters";
 
-export function useMovieSearch(query: string, page = 1) {
+export function useMovieSearch(query: string, page = 1, filters: MovieFilters = NO_FILTERS) {
   const normalized = query.trim();
   return useQuery({
-    queryKey: movieKeys.search(normalized, page),
-    queryFn: ({ signal }) => searchMovies(normalized, page, signal),
+    queryKey: movieKeys.search(normalized, page, filters),
+    queryFn: ({ signal }) => searchMovies(normalized, page, signal, filters),
     enabled: normalized.length >= SEARCH_MIN_LENGTH,
     placeholderData: keepPreviousData,
     staleTime: 5 * 60_000,
+  });
+}
+
+/** Movies matching the filters, without a text (TMDB discover). */
+export function useMovieDiscover(filters: MovieFilters, page = 1, enabled = true) {
+  return useQuery({
+    queryKey: movieKeys.discover(filters, page),
+    queryFn: ({ signal }) => discoverMovies(filters, page, signal),
+    enabled,
+    placeholderData: keepPreviousData,
+    staleTime: 10 * 60_000,
   });
 }
 

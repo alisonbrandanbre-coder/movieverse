@@ -27,7 +27,7 @@ class RecommendationItemSerializer(serializers.ModelSerializer):
 
 
 class SurpriseQuerySerializer(serializers.Serializer):
-    """`exclude`: the previous surprise (comma-separated ids are accepted too)."""
+    """`exclude`: the previous batch of surprises, as comma-separated ids."""
 
     exclude = serializers.CharField(required=False, allow_blank=True)
 

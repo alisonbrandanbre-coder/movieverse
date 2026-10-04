@@ -52,17 +52,24 @@ export async function refreshRecommendations(): Promise<Recommendations> {
   return toRecommendations(await apiRequest<RecommendationsDto>("/recommendations/refresh", { method: "POST" }));
 }
 
-interface SurpriseDto {
+interface SurpriseItemDto {
   movie: MovieSummaryDto;
   section: RecommendationSectionKey;
   popularity_bucket: PopularityBucket;
   explanation: string;
 }
 
-/** Surprise mode: one of the user's best recommendations, drawn by the backend. */
-export async function getSurprise(exclude?: number): Promise<Surprise> {
-  const dto = await apiRequest<SurpriseDto>("/recommendations/surprise", {
-    params: exclude !== undefined ? { exclude } : undefined,
+/**
+ * Surprise mode: up to three different movies among the user's best recommendations,
+ * drawn by the backend. `exclude` is the previous batch (never dealt again).
+ */
+export async function getSurprise(exclude: number[] = []): Promise<Surprise[]> {
+  const dto = await apiRequest<{ items: SurpriseItemDto[] }>("/recommendations/surprise", {
+    params: { exclude: exclude.length ? exclude.join(",") : undefined },
   });
-  return { ...toSummary(dto.movie), explanation: dto.explanation, popularityBucket: dto.popularity_bucket };
+  return dto.items.map((item) => ({
+    ...toSummary(item.movie),
+    explanation: item.explanation,
+    popularityBucket: item.popularity_bucket,
+  }));
 }

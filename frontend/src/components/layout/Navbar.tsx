@@ -54,7 +54,7 @@ export function Navbar() {
 
   return (
     <header className="sticky top-0 z-20 border-b border-line bg-base/70 backdrop-blur-lg">
-      <nav aria-label="Principal" className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3 sm:px-6">
+      <nav aria-label="Principal" className="mx-auto flex max-w-page items-center justify-between px-4 py-3 sm:px-6">
         <Link to={isAuthenticated ? "/" : "/login"} className="rounded-control focus-visible:outline-2 focus-visible:outline-focus">
           <Logo />
         </Link>

@@ -26,7 +26,7 @@ class RefreshRecommendationsView(APIView):
 
 
 class SurpriseView(APIView):
-    """Surprise mode: one movie drawn among the user's best recommendations."""
+    """Surprise mode: three different movies drawn among the user's best recommendations."""
 
     throttle_classes = [ScopedRateThrottle]
     throttle_scope = "tmdb"  # may regenerate the recommendations first
@@ -35,5 +35,5 @@ class SurpriseView(APIView):
         params = SurpriseQuerySerializer(data=request.query_params)
         params.is_valid(raise_exception=True)
         exclude = frozenset(params.validated_data.get("exclude") or [])
-        item = RecommendationService().surprise(request.user, exclude=exclude)
-        return Response(SurpriseSerializer(item).data)
+        items = RecommendationService().surprise(request.user, exclude=exclude)
+        return Response({"items": SurpriseSerializer(items, many=True).data})

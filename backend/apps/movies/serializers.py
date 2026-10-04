@@ -1,14 +1,52 @@
 from rest_framework import serializers
 
+from .filters import DECADES, MIN_RATINGS, RUNTIMES, MovieFilters
 from .models import Genre, Movie, MoviePerson
 from .services.images import backdrop_url, poster_url, profile_url
+from .services.movie_service import TMDB_MAX_PAGE
 
 SEARCH_MIN_LENGTH = 2
 SEARCH_MAX_LENGTH = 100
-TMDB_MAX_PAGE = 500
 
 
-class MovieSearchQuerySerializer(serializers.Serializer):
+class MovieFilterQuerySerializer(serializers.Serializer):
+    """Buscar / Descubrir filters: `?genres=1,2&decade=1990&rating=7&runtime=90`.
+
+    `genres` are local genre ids (all of them must match); `runtime` is "less than" in
+    minutes. `validated_data["filters"]` is a `MovieFilters`.
+    """
+
+    genres = serializers.CharField(required=False, allow_blank=True, default="")
+    decade = serializers.ChoiceField(choices=DECADES, required=False, allow_null=True)
+    rating = serializers.ChoiceField(choices=MIN_RATINGS, required=False, allow_null=True)
+    runtime = serializers.ChoiceField(choices=RUNTIMES, required=False, allow_null=True)
+    page = serializers.IntegerField(min_value=1, max_value=TMDB_MAX_PAGE, default=1)
+
+    def validate_genres(self, value: str) -> tuple[int, ...]:
+        try:
+            ids = list(dict.fromkeys(int(part) for part in value.split(",") if part.strip()))
+        except ValueError as exc:
+            raise serializers.ValidationError("Usá ids numéricos separados por coma.") from exc
+        genres = Genre.objects.in_bulk(ids)
+        if len(genres) != len(ids):
+            raise serializers.ValidationError("Alguno de los géneros no existe.")
+        return tuple(genres[i].tmdb_id for i in ids)
+
+    def validate(self, attrs: dict) -> dict:
+        attrs["filters"] = MovieFilters(
+            genre_tmdb_ids=attrs.pop("genres", ()),
+            decade=_int_or_none(attrs.pop("decade", None)),
+            min_rating=_int_or_none(attrs.pop("rating", None)),
+            max_runtime=_int_or_none(attrs.pop("runtime", None)),
+        )
+        return attrs
+
+
+def _int_or_none(value) -> int | None:
+    return None if value in (None, "") else int(value)
+
+
+class MovieSearchQuerySerializer(MovieFilterQuerySerializer):
     q = serializers.CharField(
         trim_whitespace=True,
         min_length=SEARCH_MIN_LENGTH,
@@ -20,7 +58,6 @@ class MovieSearchQuerySerializer(serializers.Serializer):
             "max_length": f"La búsqueda admite hasta {SEARCH_MAX_LENGTH} caracteres.",
         },
     )
-    page = serializers.IntegerField(min_value=1, max_value=TMDB_MAX_PAGE, default=1)
 
 
 class GenreSerializer(serializers.ModelSerializer):

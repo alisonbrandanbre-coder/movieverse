@@ -10,6 +10,7 @@ from .serializers import (
     MoodQuerySerializer,
     MovieCardSerializer,
     MovieDetailSerializer,
+    MovieFilterQuerySerializer,
     MovieSearchQuerySerializer,
     MovieSummarySerializer,
 )
@@ -23,22 +24,38 @@ class _CatalogView(APIView):
     throttle_scope = "tmdb"
 
 
+def _search_response(result) -> Response:
+    return Response(
+        {
+            "query": result.query,
+            "page": result.page,
+            "total_pages": result.total_pages,
+            "total_results": result.total_results,
+            "results": MovieSummarySerializer(result.movies, many=True).data,
+        }
+    )
+
+
 class MovieSearchView(_CatalogView):
+    """Search by title; with filters, TMDB's first pages are filtered by the backend."""
+
     def get(self, request: Request) -> Response:
         params = MovieSearchQuerySerializer(data=request.query_params)
         params.is_valid(raise_exception=True)
-        result = MovieService().search(
-            query=params.validated_data["q"], page=params.validated_data["page"]
+        data = params.validated_data
+        return _search_response(
+            MovieService().search(query=data["q"], page=data["page"], filters=data["filters"])
         )
-        return Response(
-            {
-                "query": result.query,
-                "page": result.page,
-                "total_pages": result.total_pages,
-                "total_results": result.total_results,
-                "results": MovieSummarySerializer(result.movies, many=True).data,
-            }
-        )
+
+
+class MovieDiscoverView(_CatalogView):
+    """Buscar / Descubrir without text: TMDB discover with the filters (same shape as search)."""
+
+    def get(self, request: Request) -> Response:
+        params = MovieFilterQuerySerializer(data=request.query_params)
+        params.is_valid(raise_exception=True)
+        data = params.validated_data
+        return _search_response(MovieService().discover(data["filters"], page=data["page"]))
 
 
 class MovieDetailView(_CatalogView):
