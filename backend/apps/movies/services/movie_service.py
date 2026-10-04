@@ -13,6 +13,7 @@ from typing import Any
 
 from django.conf import settings
 from django.db import IntegrityError, transaction
+from django.db.models import Count, Q
 from django.utils import timezone
 
 from ..exceptions import CatalogRateLimited, CatalogUnavailable, MovieNotFound
@@ -32,6 +33,9 @@ logger = logging.getLogger(__name__)
 CAST_STORE_LIMIT = 15  # stored for the graph ("lead actors")
 CAST_RESPONSE_LIMIT = 10  # returned by the credits endpoint
 MAX_DB_ID = 2**63 - 1
+# Onboarding sample: only titles most users have heard of, so they can rate them quickly.
+WELL_KNOWN_MIN_VOTES = 1000
+WELL_KNOWN_TMDB_PAGES = 2
 # Values that change often in TMDB and are refreshed on every search hit.
 SEARCH_REFRESH_FIELDS = ["popularity", "vote_average", "vote_count"]
 
@@ -81,7 +85,8 @@ class MovieService:
 
     # ------------------------------------------------------------ single movie
 
-    def get_movie(self, movie_id: int) -> Movie:
+    @staticmethod
+    def get_movie(movie_id: int) -> Movie:
         if not 0 < movie_id <= MAX_DB_ID:
             raise MovieNotFound()
         movie = Movie.objects.filter(pk=movie_id).prefetch_related("genres").first()
@@ -181,6 +186,42 @@ class MovieService:
             logger.warning("Could not load TMDB genre list: %r", exc)
             return
         self._upsert_genres(genres)
+
+    # ------------------------------------------------------------ onboarding
+
+    def onboarding_sample(
+        self,
+        prefer_genre_ids: list[int],
+        avoid_genre_ids: list[int],
+        exclude_movie_ids: list[int],
+        limit: int,
+    ) -> list[Movie]:
+        """Well-known titles for the onboarding's quick rating (not a recommendation).
+
+        Titles sharing more of the preferred genres come first, then the most voted ones;
+        titles in avoided genres are skipped. When the local catalog has too few well-known
+        movies, TMDB's most voted list is cached first (if TMDB fails, the local pool is used).
+        """
+        pool = Movie.objects.filter(vote_count__gte=WELL_KNOWN_MIN_VOTES).exclude(poster_path="")
+        if pool.count() < limit * 2:
+            self._cache_well_known_movies()
+        candidates = (
+            pool.exclude(pk__in=exclude_movie_ids)
+            .exclude(genres__in=avoid_genre_ids)
+            .annotate(matches=Count("genres", filter=Q(genres__in=prefer_genre_ids), distinct=True))
+            .order_by("-matches", "-vote_count", "id")
+        )
+        return list(candidates[:limit])
+
+    def _cache_well_known_movies(self) -> None:
+        for page in range(1, WELL_KNOWN_TMDB_PAGES + 1):
+            try:
+                payload = self.client.get_most_voted_movies(page=page)
+            except TMDBError as exc:
+                logger.warning("Could not load TMDB most voted movies: %r", exc)
+                return
+            results = [r for r in payload.get("results") or [] if isinstance(r.get("id"), int)]
+            self._upsert_summaries(results)
 
     # ------------------------------------------------------------ internals
 

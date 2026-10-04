@@ -11,7 +11,7 @@
 
 # 3. Onboarding
 
-Wizard.
+Wizard de 6 pasos (`/onboarding`) con barra de progreso y botones Atrás / Siguiente: géneros favoritos (al menos 1), géneros a evitar, décadas, idiomas, nivel de descubrimiento (Familiar / Equilibrado / Explorador) y valoración rápida (Me gusta / No me interesa) de títulos conocidos. Al registrarse se llega acá; `/discover` redirige acá mientras no esté completo y `/onboarding` redirige a `/discover` una vez completo.
 
 # 4. Discover
 
@@ -35,8 +35,12 @@ Input + cards.
 - géneros;
 - reparto;
 - puntuación;
-- acciones;
+- acciones: Favorita, Pendiente, Vista, Me gusta, No me interesa (activo/inactivo + mensaje de confirmación);
 - botón **Explorar universo**.
+
+# 6b. Mi perfil
+
+`/profile?tab=favoritas|pendientes|vistas|preferencias`: tabs con contador; listas paginadas con "Quitar" y estado vacío; Preferencias editables (mismos selectores que el onboarding).
 
 # 7. Mapa Cinematográfico
 

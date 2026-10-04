@@ -47,7 +47,7 @@ export function MovieDetailPage() {
           Volver
         </button>
       </div>
-      <MovieHero movie={data} />
+      <MovieHero key={data.id} movie={data} />
       <PageContainer>
         <MovieCreditsSection movieId={data.id} />
       </PageContainer>

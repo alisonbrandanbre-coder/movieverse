@@ -39,3 +39,16 @@ def user(db) -> User:
 def auth_client(api_client: APIClient, user: User) -> APIClient:
     api_client.force_authenticate(user=user)
     return api_client
+
+
+@pytest.fixture
+def other_user(db) -> User:
+    return User.objects.create_user(email="bruno@example.com", password=DEFAULT_PASSWORD)
+
+
+@pytest.fixture
+def other_client(other_user: User) -> APIClient:
+    """A second, independent session: used to prove users never see each other's data."""
+    client = APIClient()
+    client.force_authenticate(user=other_user)
+    return client

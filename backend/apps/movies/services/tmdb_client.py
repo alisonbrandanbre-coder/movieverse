@@ -71,6 +71,13 @@ class TMDBClient:
         """Prepared for the cinematic map (Sprint 4); not used by the UI yet."""
         return self._get(f"/movie/{int(tmdb_id)}/similar", {"page": page})
 
+    def get_most_voted_movies(self, page: int = 1) -> dict[str, Any]:
+        """Most voted movies of all time: the titles most people can rate (onboarding)."""
+        return self._get(
+            "/discover/movie",
+            {"sort_by": "vote_count.desc", "page": page, "include_adult": "false"},
+        )
+
     def get_genres(self) -> list[dict[str, Any]]:
         return self._get("/genre/movie/list").get("genres", [])
 

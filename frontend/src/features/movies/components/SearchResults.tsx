@@ -1,10 +1,10 @@
 import { SearchX, Telescope } from "lucide-react";
 
 import { getErrorMessage } from "@/api/client";
-import { Button } from "@/components/ui/Button";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { ErrorState } from "@/components/ui/ErrorState";
 import { LoadingState } from "@/components/ui/LoadingState";
+import { Pagination } from "@/components/ui/Pagination";
 
 import { SEARCH_MIN_LENGTH } from "../api";
 import { useMovieSearch } from "../hooks";
@@ -57,19 +57,7 @@ export function SearchResults({ query, page, onPageChange }: SearchResultsProps)
         {totalResults.toLocaleString("es")} {totalResults === 1 ? "resultado" : "resultados"} para “{trimmed}”
       </p>
       <MovieGrid movies={results} />
-      {totalPages > 1 && (
-        <nav aria-label="Paginación" className="flex items-center justify-center gap-3">
-          <Button variant="secondary" disabled={page <= 1} onClick={() => onPageChange(page - 1)}>
-            Anterior
-          </Button>
-          <span className="text-sm text-fg-muted">
-            Página {page} de {totalPages}
-          </span>
-          <Button variant="secondary" disabled={page >= totalPages} onClick={() => onPageChange(page + 1)}>
-            Siguiente
-          </Button>
-        </nav>
-      )}
+      <Pagination page={page} totalPages={totalPages} onPageChange={onPageChange} />
     </div>
   );
 }

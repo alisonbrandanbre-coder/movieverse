@@ -69,7 +69,8 @@ Etiquetas: utility **`eyebrow`** = 12 px, bold, mayúsculas, `letter-spacing: 4p
 | `eyebrow` | Etiqueta pequeña en mayúsculas |
 | `drop-shadow-planet` | Halo violeta alrededor del planeta |
 | `animate-twinkle` · `animate-float` · `animate-comet` | Fondo espacial |
-| `animate-fade-up` | Entrada de bloques |
+| `animate-fade-up` | Entrada de bloques (también cada paso del onboarding) |
+| `animate-pop` | Pulso de 0,35 s del ícono de un `ToggleButton` al activarse |
 | `animate-intro-*` | Timeline de la intro (3 s) |
 
 `prefers-reduced-motion` anula todas las animaciones globalmente (`index.css`); además los cometas se ocultan y la intro se saltea.
@@ -102,7 +103,14 @@ ffmpeg -i ImagenesReferencia/Planeta.png -vf "scale=800:800:flags=lanczos,format
 | `Input` | `components/ui/Input.tsx` | Input sin label visible (siempre acompañarlo de un `<label>`, aunque sea `sr-only`). `icon`, `invalid`, `inputSize` (`md`/`lg`), `emphasis` (borde violeta con halo: barra de búsqueda). |
 | `TextField` | `components/ui/TextField.tsx` | `Input` + `<label>` real + error accesible (`aria-describedby`). Para formularios. |
 | `Tooltip` | `components/ui/Tooltip.tsx` | Tooltip hover/focus. Funciona con botones deshabilitados si el botón lleva `pointer-events-none`. |
+| `Chip` | `components/ui/Chip.tsx` | Toggle con forma de píldora para selección múltiple (géneros, décadas, idiomas). `selected` → `aria-pressed`; seleccionado: borde `violet-light`, fondo `violet/25` y `shadow-halo`. `tone="danger"` para elecciones negativas (géneros a evitar). |
+| `ToggleButton` | `components/ui/ToggleButton.tsx` | Acción on/off con ícono (Favorita, Pendiente, Vista, Me gusta, No me interesa). `pressed` → `aria-pressed`; activo: mismo estilo que `Chip`, ícono relleno (`fillWhenPressed`, apagarlo en íconos como `Eye`) y `animate-pop`. `tone` `accent`/`danger`, `size` `sm`/`md`, `label` opcional (sin label, pasar `aria-label`). |
+| `ChoiceCard` | `components/ui/ChoiceCard.tsx` | Opción única como tarjeta: `<input type="radio">` real (`sr-only`) dentro de un `<label>`; marcado: borde `violet-light` + halo. Agrupar en un `role="radiogroup"`. Nivel de descubrimiento. |
+| `ProgressBar` | `components/ui/ProgressBar.tsx` | Pista fina con relleno `bg-brand`; `role="progressbar"` con `label` y `valueText` ("Paso 2 de 6"). |
+| `Tabs` | `components/ui/Tabs.tsx` | Tabs WAI-ARIA (`tablist`/`tab`/`tabpanel`, ←/→/Inicio/Fin). Activa: subrayado `violet-light`. `count` opcional como badge. Sólo renderiza el panel activo (`children`). |
+| `Pagination` | `components/ui/Pagination.tsx` | "Anterior · Página X de Y · Siguiente"; no renderiza nada con una sola página. Búsqueda y listas del perfil. |
 | `MovieCard` | `features/movies/components/MovieCard.tsx` | Póster 2:3 (radio 14 px, sombra); título, año y ★ puntaje dorado. Hover: sube 6 px, borde violeta con glow y chip "Explorar universo". Sin póster: placeholder con gradiente y el título en Bebas Neue (`PosterImage`). Usar dentro de `MovieGrid`. |
+| `MovieGrid` | `features/movies/components/MovieGrid.tsx` | Grilla responsive de `MovieCard`. `renderAction(movie)` opcional agrega un control debajo de cada tarjeta, fuera del link (p. ej. "Quitar" en el perfil). |
 | `EmptyState` / `ErrorState` / `LoadingState` | `components/ui/` | Ícono en círculo con glow, título display, descripción y CTA (`children`). |
 
 ### Layout
@@ -122,8 +130,10 @@ ffmpeg -i ImagenesReferencia/Planeta.png -vf "scale=800:800:flags=lanczos,format
 | `/` | `IntroPage` | 3 s: logo con zoom que se desvanece → crawl en perspectiva (`rotateX(26deg)`, Barlow Condensed, `crawl`) → redirige a `/login` o `/discover`. "Saltar intro ›" (o Esc). Una vez por sesión (`sessionStorage["mv:intro-seen"]`); con reduced-motion se saltea. Sólo el estilo de un crawl de ciencia ficción: sin logos, tipografías ni música de terceros. |
 | `/login`, `/register` | `AuthLayout` | "Iniciá sesión / Tu universo te está esperando." · botón "Entrar al universo". |
 | `/search` | `SearchPage` | Eyebrow "EXPLORAR", barra grande con `emphasis`, contador, `MovieGrid`. |
-| `/movies/:id` | `MovieDetailPage` | Backdrop a lo ancho con máscara/degradado hacia `base`, póster, título display, puntaje dorado, año · duración · idioma, chips de género, sinopsis, "Explorar universo" (deshabilitado con tooltip "Próximamente"), reparto en fila horizontal con scroll. |
-| `/discover`, `/profile` | — | `PageHeader` + `EmptyState` con CTA dentro de una `Card`. |
+| `/onboarding` | `OnboardingPage` | `PageHeader` "Armá tu constelación" + `Card` con eyebrow "Paso X de 6", `ProgressBar`, título del paso en display (recibe el foco al cambiar de paso), contenido y pie con Atrás (`secondary`) / Siguiente o Terminar (`primary`). Pasos con `Chip`, `ChoiceCard` y, en la valoración rápida, pósters con dos `ToggleButton` de sólo ícono. |
+| `/movies/:id` | `MovieDetailPage` | Backdrop a lo ancho con máscara/degradado hacia `base`, póster, título display, puntaje dorado, año · duración · idioma, chips de género, sinopsis, "Explorar universo" (deshabilitado con tooltip "Próximamente"), fila de `ToggleButton` (Favorita · Pendiente · Vista · Me gusta · No me interesa) con mensaje de confirmación en `violet-soft` (`role="status"`), reparto en fila horizontal con scroll. |
+| `/profile` | `ProfilePage` | Avatar + `h1`, `Tabs` Favoritas / Pendientes / Vistas (con contador) / Preferencias. Listas: `MovieGrid` con "Quitar" (`ghost`) + `Pagination`; vacías: `EmptyState` en `Card` con CTA a Buscar. Preferencias: secciones con `eyebrow` y los mismos selectores del onboarding. |
+| `/discover` | — | `PageHeader` + `EmptyState` con CTA dentro de una `Card` (recomendaciones en Sprint 3). |
 
 ## 5. Cómo armar una pantalla nueva
 

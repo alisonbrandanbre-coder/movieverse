@@ -19,3 +19,8 @@ export function formatLanguage(code: string): string {
     return code.toUpperCase();
   }
 }
+
+/** 1990 → "Años 90", 2010 → "Años 2010". */
+export function formatDecade(decade: number): string {
+  return `Años ${decade < 2000 ? String(decade).slice(2) : decade}`;
+}

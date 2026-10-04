@@ -15,13 +15,15 @@ Custom user (`apps.accounts.User`, `AUTH_USER_MODEL = "accounts.User"`). Login p
 
 # UserTasteProfile
 
-- user_id
-- preferred_genres
-- disliked_genres
-- preferred_decades
-- preferred_languages
-- discovery_level
-- onboarding_completed
+`apps.preferences.UserTasteProfile`. Una fila por usuario (OneToOne), creada vacía en el primer acceso. Sólo la escribe `TasteProfileService`.
+
+- user_id (OneToOne, CASCADE)
+- preferred_genres (M2M → Genre)
+- disliked_genres (M2M → Genre; nunca se solapa con preferred_genres)
+- preferred_decades (JSON: años de inicio de década, `1990` = los 90)
+- preferred_languages (JSON: códigos ISO 639-1, como `Movie.original_language`)
+- discovery_level (`FAMILIAR`, `BALANCED` por defecto, `EXPLORER`)
+- onboarding_completed (bool)
 - updated_at
 
 # Movie
@@ -76,12 +78,14 @@ Se almacenan todos los directores (crew con `job == "Director"`) y los primeros 
 
 # Interaction
 
+`apps.interactions.Interaction`. Cada fila es el **estado actual** de una marca de un usuario sobre una película (no un log de eventos): UNIQUE(user, movie, type), así que no hay favoritas ni pendientes duplicadas. Quitar una marca borra la fila. Índice (user, type, -created_at) para las listas del perfil. Sólo la escribe `InteractionService`.
+
 - id
-- user_id
-- movie_id
+- user_id (CASCADE)
+- movie_id (CASCADE)
 - type
-- rating nullable
-- created_at
+- rating nullable (reservado; el MVP usa LIKE/DISLIKE)
+- created_at (= "agregada el" en las listas)
 
 Tipos:
 
@@ -90,7 +94,9 @@ Tipos:
 - WATCHED
 - FAVORITE
 - WATCHLIST
-- REMOVE_WATCHLIST
+- REMOVE_WATCHLIST (acción de la API equivalente a borrar la fila WATCHLIST; nunca se persiste)
+
+La valoración rápida del onboarding se guarda como LIKE / DISLIKE.
 
 # RecommendationSnapshot
 

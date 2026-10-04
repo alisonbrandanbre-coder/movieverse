@@ -77,7 +77,7 @@ export function MovieHero({ movie }: { movie: MovieDetail }) {
             <p className="text-lg leading-relaxed text-fg-secondary">{movie.overview || "Sin sinopsis disponible."}</p>
           </section>
           <div className="mt-2">
-            <MovieActions />
+            <MovieActions movieId={movie.id} />
           </div>
         </div>
       </div>

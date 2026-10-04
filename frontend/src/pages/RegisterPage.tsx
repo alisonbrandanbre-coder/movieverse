@@ -19,7 +19,7 @@ export function RegisterPage() {
         </>
       }
     >
-      <RegisterForm onSuccess={() => navigate("/discover", { replace: true })} />
+      <RegisterForm onSuccess={() => navigate("/onboarding", { replace: true })} />
     </AuthLayout>
   );
 }

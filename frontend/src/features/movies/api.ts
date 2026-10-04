@@ -9,7 +9,7 @@ import type {
   MovieSummary,
 } from "@/types/movie";
 
-interface MovieSummaryDto {
+export interface MovieSummaryDto {
   id: number;
   tmdb_id: number;
   title: string;
@@ -64,7 +64,7 @@ export const movieKeys = {
   credits: (id: number) => ["movies", "credits", id] as const,
 };
 
-function toSummary(dto: MovieSummaryDto): MovieSummary {
+export function toSummary(dto: MovieSummaryDto): MovieSummary {
   return {
     id: dto.id,
     tmdbId: dto.tmdb_id,

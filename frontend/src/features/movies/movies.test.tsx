@@ -16,6 +16,8 @@ import { renderWithProviders, TEST_USER } from "@/test/render";
 import { MovieCard } from "./components/MovieCard";
 
 const me = () => jsonResponse(TEST_USER);
+const noInteractions = () =>
+  jsonResponse({ movie_id: 1, favorite: false, watchlist: false, watched: false, reaction: null });
 
 describe("MovieCard", () => {
   it("shows poster, title, year and rating and links to the detail", () => {
@@ -114,6 +116,7 @@ describe("MovieDetailPage", () => {
       "GET /auth/me": me,
       "GET /movies/1": () => jsonResponse(INTERSTELLAR_DETAIL_DTO),
       "GET /movies/1/credits": () => jsonResponse(INTERSTELLAR_CREDITS_DTO),
+      "GET /movies/1/interactions": noInteractions,
     });
     renderWithProviders(<AppRoutes />, { route: "/movies/1", authenticated: true });
 
@@ -128,17 +131,16 @@ describe("MovieDetailPage", () => {
     expect(screen.getByText("Cooper")).toBeInTheDocument();
   });
 
-  it("shows the future actions disabled", async () => {
+  it("keeps the cinematic map disabled until Sprint 4", async () => {
     mockFetch({
       "GET /auth/me": me,
       "GET /movies/1": () => jsonResponse(INTERSTELLAR_DETAIL_DTO),
       "GET /movies/1/credits": () => jsonResponse(INTERSTELLAR_CREDITS_DTO),
+      "GET /movies/1/interactions": noInteractions,
     });
     renderWithProviders(<AppRoutes />, { route: "/movies/1", authenticated: true });
 
-    for (const action of [/Favorita/, /Pendientes/, /Vista/, /Explorar universo/]) {
-      expect(await screen.findByRole("button", { name: action })).toBeDisabled();
-    }
+    expect(await screen.findByRole("button", { name: /Explorar universo/ })).toBeDisabled();
   });
 
   it("shows a loading state", async () => {
@@ -168,6 +170,7 @@ describe("MovieDetailPage", () => {
       "GET /auth/me": me,
       "GET /movies/1": () => jsonResponse(INTERSTELLAR_DETAIL_DTO),
       "GET /movies/1/credits": () => apiError(503, "TMDB_UNAVAILABLE", "Catálogo no disponible."),
+      "GET /movies/1/interactions": noInteractions,
     });
     renderWithProviders(<AppRoutes />, { route: "/movies/1", authenticated: true });
 

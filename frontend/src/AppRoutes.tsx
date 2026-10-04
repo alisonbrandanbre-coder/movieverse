@@ -2,11 +2,13 @@ import { Route, Routes } from "react-router";
 
 import { AppLayout } from "@/components/layout/AppLayout";
 import { GuestRoute, ProtectedRoute } from "@/features/auth/ProtectedRoute";
+import { RequireOnboarding } from "@/features/preferences/RequireOnboarding";
 import { DiscoverPage } from "@/pages/DiscoverPage";
 import { IntroPage } from "@/pages/IntroPage";
 import { LoginPage } from "@/pages/LoginPage";
 import { MovieDetailPage } from "@/pages/MovieDetailPage";
 import { NotFoundPage } from "@/pages/NotFoundPage";
+import { OnboardingPage } from "@/pages/OnboardingPage";
 import { ProfilePage } from "@/pages/ProfilePage";
 import { RegisterPage } from "@/pages/RegisterPage";
 import { SearchPage } from "@/pages/SearchPage";
@@ -21,7 +23,10 @@ export function AppRoutes() {
           <Route path="register" element={<RegisterPage />} />
         </Route>
         <Route element={<ProtectedRoute />}>
-          <Route path="discover" element={<DiscoverPage />} />
+          <Route path="onboarding" element={<OnboardingPage />} />
+          <Route element={<RequireOnboarding />}>
+            <Route path="discover" element={<DiscoverPage />} />
+          </Route>
           <Route path="search" element={<SearchPage />} />
           <Route path="movies/:id" element={<MovieDetailPage />} />
           <Route path="profile" element={<ProfilePage />} />
