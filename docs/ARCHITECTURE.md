@@ -123,6 +123,20 @@ score =
 - popularity_penalty
 ```
 
+Implementación (Sprint 3, `apps/recommendations/services/`):
+
+```text
+TasteProfileService.taste(user)          preferencias + feedback → pesos por género, semillas, exclusiones, firma
+  → CandidateService                     /discover (géneros, décadas, idiomas) + recommendations/similar de favoritas
+                                         y likes + catálogo local; TMDB vía MovieService.cached_lists (paralelo, caché)
+  → scoring.py                           affinity, novelty, quality (rating ponderado), exploration, penalty (puras)
+  → ranking.py                           re-ranking greedy: diversidad, cupo VERY_POPULAR, sin rachas de 4
+  → explanations.py                      "¿Por qué?" en lenguaje natural
+  → RecommendationRun + RecommendationSnapshot
+```
+
+Las views sólo llaman a `RecommendationService.get/refresh`. Pesos, umbrales y reglas: `docs/SPRINT_3_REPORT.md`.
+
 # Seguridad
 
 - JWT;

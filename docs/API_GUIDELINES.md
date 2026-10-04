@@ -144,8 +144,40 @@ Directores y los 10 primeros actores.
 ```text
 GET  /recommendations
 POST /recommendations/refresh
-GET  /recommendations/surprise
+GET  /recommendations/surprise   (Sprint 5)
 ```
+
+Siempre del usuario autenticado. Toda la lógica vive en `RecommendationService` (docs/RECOMMENDER_SPEC.md); el frontend sólo muestra lo que devuelve la API.
+
+- `GET` devuelve la última generación guardada y **la regenera sola** si cambiaron las preferencias o el feedback (favorita, like, dislike, vista, pendiente), si tiene más de 24 h o si se generó con TMDB degradado hace más de 10 min. Puede consultar TMDB (throttle `tmdb`).
+- `POST /refresh` regenera siempre (throttle `recommendations`, 10/min).
+
+```json
+{
+  "generated_at": "2026-10-04T13:10:00Z",
+  "discovery_level": "EXPLORER",
+  "is_fallback": false,
+  "degraded": false,
+  "notice": null,
+  "sections": [
+    {"key": "FOR_YOU", "items": [{
+      "movie": {"id": 1, "tmdb_id": 157336, "title": "Primer", "release_year": 2004, "poster_url": "...", "vote_average": 6.7},
+      "position": 1,
+      "popularity_bucket": "MEDIUM",
+      "explanation": "Porque tenés Interstellar entre tus favoritas y preferís ciencia ficción y suspense; es menos conocida que la mayoría y te acerca a drama.",
+      "scores": {"affinity": 0.9244, "novelty": 0.2151, "quality": 0.4876, "diversity": 0.5,
+                 "exploration": 1.0, "popularity_penalty": 0.0528, "final": 0.5765}
+    }]},
+    {"key": "HIDDEN_GEMS", "items": []},
+    {"key": "KEEP_EXPLORING", "items": []}
+  ]
+}
+```
+
+- `sections` siempre trae las 3 claves, en ese orden: `FOR_YOU` (Para vos), `HIDDEN_GEMS` (sólo `MEDIUM`/`HIDDEN` con buena valoración) y `KEEP_EXPLORING` (a partir de favoritas y likes). Hasta 12 por sección; una película aparece en una sola sección.
+- `popularity_bucket` ∈ `VERY_POPULAR | POPULAR | MEDIUM | HIDDEN`.
+- `is_fallback: true` → el onboarding no está completo: populares bien valoradas, sin personalizar, con `notice` explicándolo.
+- `degraded: true` → alguna fuente de TMDB falló sin caché: se responde igual (200) con lo disponible y un `notice`.
 
 # Graph
 

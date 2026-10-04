@@ -5,13 +5,14 @@ from dataclasses import dataclass
 from django.db import transaction
 
 from apps.accounts.models import User
-from apps.interactions.models import InteractionType
+from apps.interactions.models import Interaction, InteractionType
 from apps.interactions.services import InteractionService
 from apps.movies.models import Genre, Movie
 from apps.movies.services.movie_service import MovieService
 
 from .constants import DECADES, DISCOVERY_LEVEL_DESCRIPTIONS, LANGUAGES
 from .models import DiscoveryLevel, UserTasteProfile
+from .taste import MAX_SEEDS, SEED_TYPES, Seed, Taste, genre_weights, signature
 
 ONBOARDING_SAMPLE_SIZE = 12
 
@@ -86,6 +87,41 @@ class TasteProfileService:
             avoid_genre_ids=disliked_genre_ids,
             exclude_movie_ids=already_rated,
             limit=ONBOARDING_SAMPLE_SIZE,
+        )
+
+    @classmethod
+    def taste(cls, user: User) -> Taste:
+        """Explicit preferences + feedback (favorites, likes, watchlist, watched, dislikes)."""
+        profile = cls.get_profile(user)
+        interactions = list(
+            Interaction.objects.filter(user=user)
+            .select_related("movie")
+            .prefetch_related("movie__genres")
+            .order_by("-created_at", "-id")
+        )
+        preferred = {g.pk for g in profile.preferred_genres.all()}
+        signals = [(i.type, [g.pk for g in i.movie.genres.all()]) for i in interactions]
+        seeds: list[Seed] = []
+        for interaction_type in SEED_TYPES:  # favorites first, newest first
+            for i in interactions:
+                known = any(s.movie.pk == i.movie_id for s in seeds)
+                if i.type == interaction_type and not known and len(seeds) < MAX_SEEDS:
+                    seeds.append(Seed(movie=i.movie, type=i.type))
+        return Taste(
+            onboarding_completed=profile.onboarding_completed,
+            discovery_level=profile.discovery_level,
+            preferred_genre_ids=frozenset(preferred),
+            disliked_genre_ids=frozenset(g.pk for g in profile.disliked_genres.all()),
+            decades=frozenset(profile.preferred_decades),
+            languages=frozenset(profile.preferred_languages),
+            genre_weights=genre_weights(preferred, signals),
+            seeds=seeds,
+            excluded_movie_ids=frozenset(i.movie_id for i in interactions),
+            signature=signature(
+                profile.updated_at.isoformat(),
+                profile.onboarding_completed,
+                sorted((i.movie_id, i.type) for i in interactions),
+            ),
         )
 
     @staticmethod

@@ -20,7 +20,9 @@ Secciones:
 - Para vos;
 - Joyas para descubrir;
 - Continuá explorando;
-- Modo sorpresa.
+- Modo sorpresa (Sprint 5).
+
+Cada card tiene "¿Por qué?", que muestra la explicación de la API. Botón "Refrescar", estados de carga, error y vacío, y aviso cuando la respuesta es fallback o degradada.
 
 # 5. Buscar
 

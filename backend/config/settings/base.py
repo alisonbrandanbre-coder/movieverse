@@ -112,6 +112,7 @@ REST_FRAMEWORK = {
     "DEFAULT_THROTTLE_RATES": {
         "auth": "20/min",
         "tmdb": "60/min",
+        "recommendations": "10/min",
     },
     "UNAUTHENTICATED_USER": None,
 }

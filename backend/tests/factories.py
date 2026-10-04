@@ -1,5 +1,7 @@
 """Tiny builders for local catalog rows (no TMDB involved)."""
 
+from datetime import date
+
 from apps.movies.models import Genre, Movie
 
 _next_tmdb_id = iter(range(900_000, 1_000_000))
@@ -10,6 +12,8 @@ def make_genre(name: str, tmdb_id: int | None = None) -> Genre:
 
 
 def make_movie(title: str, *, genres=(), vote_count: int = 5000, poster: bool = True, **fields):
+    if isinstance(fields.get("release_date"), str):
+        fields["release_date"] = date.fromisoformat(fields["release_date"])
     movie = Movie.objects.create(
         tmdb_id=fields.pop("tmdb_id", None) or next(_next_tmdb_id),
         title=title,

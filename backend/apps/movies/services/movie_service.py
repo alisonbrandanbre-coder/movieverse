@@ -7,6 +7,8 @@ Cache policy (docs/SPRINT_1_REPORT.md → "Persistencia"):
 """
 
 import logging
+from collections.abc import Callable
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 from typing import Any
@@ -17,7 +19,7 @@ from django.db.models import Count, Q
 from django.utils import timezone
 
 from ..exceptions import CatalogRateLimited, CatalogUnavailable, MovieNotFound
-from ..models import Genre, Movie, MoviePerson, Person
+from ..models import Genre, Movie, MoviePerson, Person, TMDBListCache
 from .normalizers import (
     PersonCredit,
     genre_tmdb_ids,
@@ -36,6 +38,9 @@ MAX_DB_ID = 2**63 - 1
 # Onboarding sample: only titles most users have heard of, so they can rate them quickly.
 WELL_KNOWN_MIN_VOTES = 1000
 WELL_KNOWN_TMDB_PAGES = 2
+TMDB_PARALLEL_CALLS = 6
+
+TMDBFetch = Callable[[TMDBClient], dict[str, Any]]
 # Values that change often in TMDB and are refreshed on every search hit.
 SEARCH_REFRESH_FIELDS = ["popularity", "vote_average", "vote_count"]
 
@@ -47,6 +52,12 @@ class SearchResult:
     total_pages: int
     total_results: int
     movies: list[Movie]
+
+
+@dataclass(frozen=True)
+class CachedLists:
+    lists: dict[str, list[Movie]]
+    failed: list[str]  # keys TMDB could not answer and that had no cache
 
 
 @dataclass(frozen=True)
@@ -147,9 +158,10 @@ class MovieService:
 
     def sync_credits(self, movie: Movie) -> None:
         """Replace the movie's stored directors and main cast. Raises TMDBError."""
-        credits = normalize_credits(
-            self.client.get_movie_credits(movie.tmdb_id), cast_limit=CAST_STORE_LIMIT
-        )
+        self._store_credits(movie, self.client.get_movie_credits(movie.tmdb_id))
+
+    def _store_credits(self, movie: Movie, payload: dict[str, Any]) -> None:
+        credits = normalize_credits(payload, cast_limit=CAST_STORE_LIMIT)
         with transaction.atomic():
             people = self._upsert_people([*credits.directors, *credits.cast])
             rows = [
@@ -186,6 +198,71 @@ class MovieService:
             logger.warning("Could not load TMDB genre list: %r", exc)
             return
         self._upsert_genres(genres)
+
+    # ------------------------------------------------------------ cached lists
+
+    def cached_lists(self, calls: dict[str, TMDBFetch]) -> CachedLists:
+        """Movies of several TMDB list calls, asking TMDB at most once per `TMDB_CACHE_DAYS`.
+
+        `calls` maps a stable cache key to a function that receives the client and returns
+        the raw payload (with `results`). Stale or missing lists are fetched in parallel
+        (network only; DB writes stay in this thread), upserted as summary rows and stored
+        in `TMDBListCache`. If TMDB fails, a stale list is served; a key that failed with no
+        cache at all is reported in `failed` instead of raising.
+        """
+        entries = {e.key: e for e in TMDBListCache.objects.filter(key__in=calls)}
+        stale = {
+            key: fetch
+            for key, fetch in calls.items()
+            if key not in entries or self._is_stale(entries[key].fetched_at)
+        }
+        failed = []
+        for key, result in self._fetch_parallel(stale).items():
+            if isinstance(result, TMDBError):
+                logger.warning("TMDB list %s failed: %r", key, result)
+                if key not in entries:
+                    failed.append(key)
+                continue
+            results = [r for r in result.get("results") or [] if isinstance(r.get("id"), int)]
+            self._upsert_summaries(results)
+            entries[key], _ = TMDBListCache.objects.update_or_create(
+                key=key,
+                defaults={"tmdb_ids": [r["id"] for r in results], "fetched_at": timezone.now()},
+            )
+        all_ids = {tid for entry in entries.values() for tid in entry.tmdb_ids}
+        movies = Movie.objects.prefetch_related("genres").in_bulk(all_ids, field_name="tmdb_id")
+        lists = {
+            key: [movies[tid] for tid in entry.tmdb_ids if tid in movies]
+            for key, entry in entries.items()
+        }
+        return CachedLists(lists=lists, failed=failed)
+
+    def ensure_credits(self, movies: list[Movie]) -> None:
+        """Sync credits of the movies that never had them (parallel, best effort)."""
+        missing = {str(m.pk): m for m in movies if m.credits_synced_at is None}
+        calls = {
+            key: (lambda client, tmdb_id=movie.tmdb_id: client.get_movie_credits(tmdb_id))
+            for key, movie in missing.items()
+        }
+        for key, result in self._fetch_parallel(calls).items():
+            if isinstance(result, TMDBError):
+                logger.warning("Could not sync credits for movie %s: %r", key, result)
+                continue
+            self._store_credits(missing[key], result)
+
+    def _fetch_parallel(self, calls: dict[str, TMDBFetch]) -> dict[str, Any]:
+        """Run TMDB calls concurrently. Values are payloads or the `TMDBError` raised."""
+        if not calls:
+            return {}
+        results: dict[str, Any] = {}
+        with ThreadPoolExecutor(max_workers=min(TMDB_PARALLEL_CALLS, len(calls))) as pool:
+            futures = {key: pool.submit(fetch, self.client) for key, fetch in calls.items()}
+            for key, future in futures.items():
+                try:
+                    results[key] = future.result()
+                except TMDBError as exc:
+                    results[key] = exc
+        return results
 
     # ------------------------------------------------------------ onboarding
 

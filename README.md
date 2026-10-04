@@ -59,6 +59,7 @@ Estas funcionalidades están contempladas en producto, pero se dejan fuera del M
 | 0 | Fundación: Django + React + PostgreSQL + JWT + CI | ver `docs/SPRINT_0_REPORT.md` |
 | 1 | Catálogo: TMDB, búsqueda, detalle, reparto, cache local | ver `docs/SPRINT_1_REPORT.md` |
 | 2 | Usuario: onboarding de preferencias, favoritas, pendientes, vistas, like/dislike | ver `docs/SPRINT_2_REPORT.md` |
+| 3 | Recomendaciones: content-based + discovery re-ranking con explicaciones | ver `docs/SPRINT_3_REPORT.md` |
 
 ## Stack
 
@@ -205,6 +206,8 @@ Base: `/api/v1`. Errores con formato `{"error": {"code", "message", "details?"}}
 | GET / POST | `/movies/{id}/interactions` | JWT | estado del usuario para la película / activar favorita, pendiente, vista, like, dislike |
 | DELETE | `/movies/{id}/interactions/{type}` | JWT | desactivar una de esas marcas |
 | GET | `/me/favorites`, `/me/watchlist`, `/me/watched` | JWT | listas del usuario, paginadas |
+| GET | `/recommendations` | JWT | recomendaciones en 3 secciones con score desglosado y explicación; se regeneran solas cuando cambia el feedback |
+| POST | `/recommendations/refresh` | JWT | fuerza una nueva generación |
 
 Contratos detallados: `docs/API_GUIDELINES.md`.
 
@@ -217,7 +220,7 @@ Contratos detallados: `docs/API_GUIDELINES.md`.
 | `/search?q=` | privada | búsqueda con debounce, loading / vacío / error, paginación |
 | `/onboarding` | privada | wizard de 6 pasos; al registrarse se llega acá; si ya se completó redirige a `/discover` |
 | `/movies/:id` | privada | backdrop, póster, año, duración, géneros, rating, sinopsis, director, reparto; Favorita / Pendiente / Vista / Me gusta / No me interesa |
-| `/discover` | privada | requiere onboarding completo; recomendaciones en Sprint 3 |
+| `/discover` | privada | requiere onboarding completo; Para vos / Joyas para descubrir / Continuá explorando, con «¿Por qué?» y Refrescar |
 | `/profile?tab=` | privada | tabs Favoritas / Pendientes / Vistas / Preferencias (editables) |
 
 ## Verificar la integración real con TMDB

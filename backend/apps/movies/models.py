@@ -72,6 +72,19 @@ class Movie(models.Model):
         return self.release_date.year if self.release_date else None
 
 
+class TMDBListCache(models.Model):
+    """Result of a TMDB list call (discover query, a movie's recommendations…) as an
+    ordered list of tmdb ids. The movies themselves live in `Movie`; this only avoids
+    asking TMDB the same list again before `TMDB_CACHE_DAYS`."""
+
+    key = models.CharField(max_length=255, unique=True)
+    tmdb_ids = models.JSONField(default=list)
+    fetched_at = models.DateTimeField()
+
+    def __str__(self) -> str:
+        return f"{self.key} ({len(self.tmdb_ids)})"
+
+
 class MoviePerson(models.Model):
     class RoleType(models.TextChoices):
         ACTOR = "ACTOR", "Actor"

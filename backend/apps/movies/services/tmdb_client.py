@@ -68,15 +68,20 @@ class TMDBClient:
         return self._get(f"/movie/{int(tmdb_id)}/credits")
 
     def get_similar_movies(self, tmdb_id: int, page: int = 1) -> dict[str, Any]:
-        """Prepared for the cinematic map (Sprint 4); not used by the UI yet."""
+        """Movies TMDB considers similar (shared keywords/genres). Recommender + map."""
         return self._get(f"/movie/{int(tmdb_id)}/similar", {"page": page})
+
+    def get_movie_recommendations(self, tmdb_id: int, page: int = 1) -> dict[str, Any]:
+        """TMDB's "people who liked this also liked" list for a movie (recommender seeds)."""
+        return self._get(f"/movie/{int(tmdb_id)}/recommendations", {"page": page})
+
+    def discover_movies(self, params: dict[str, Any], page: int = 1) -> dict[str, Any]:
+        """`/discover/movie` with arbitrary filters (genres, dates, language, votes, sort)."""
+        return self._get("/discover/movie", {**params, "page": page, "include_adult": "false"})
 
     def get_most_voted_movies(self, page: int = 1) -> dict[str, Any]:
         """Most voted movies of all time: the titles most people can rate (onboarding)."""
-        return self._get(
-            "/discover/movie",
-            {"sort_by": "vote_count.desc", "page": page, "include_adult": "false"},
-        )
+        return self.discover_movies({"sort_by": "vote_count.desc"}, page=page)
 
     def get_genres(self) -> list[dict[str, Any]]:
         return self._get("/genre/movie/list").get("genres", [])

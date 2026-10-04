@@ -1,5 +1,6 @@
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
+import { recommendationKeys } from "@/features/recommendations/api";
 import type { InteractionType, MovieInteractionState, SavedListKind } from "@/types/interactions";
 
 import { getMovieInteractions, getSavedMovies, interactionKeys, setInteraction } from "./api";
@@ -60,6 +61,11 @@ export function useToggleInteraction(movieId: number) {
       if (context?.previous) queryClient.setQueryData(key, context.previous);
     },
     onSuccess: (state) => queryClient.setQueryData(key, state),
-    onSettled: () => queryClient.invalidateQueries({ queryKey: interactionKeys.lists }),
+    onSettled: () =>
+      Promise.all([
+        queryClient.invalidateQueries({ queryKey: interactionKeys.lists }),
+        // Feedback changes the next recommendations (the backend regenerates them).
+        queryClient.invalidateQueries({ queryKey: recommendationKeys.all }),
+      ]),
   });
 }

@@ -98,16 +98,46 @@ Tipos:
 
 La valoración rápida del onboarding se guarda como LIKE / DISLIKE.
 
+# RecommendationRun
+
+`apps.recommendations.RecommendationRun`. Una por usuario (OneToOne): la última generación. La escribe sólo `RecommendationService`.
+
+- user_id (OneToOne, CASCADE)
+- generated_at
+- signature (hash de preferencias + feedback usados; si cambia, la corrida está vencida)
+- discovery_level
+- is_fallback (onboarding incompleto)
+- degraded (alguna fuente de TMDB falló sin caché)
+
 # RecommendationSnapshot
 
+Cada película recomendada en la última corrida, con el desglose completo del score.
+
+- run_id (CASCADE)
 - user_id
 - movie_id
+- section (`FOR_YOU`, `HIDDEN_GEMS`, `KEEP_EXPLORING`)
+- position (1…12 dentro de la sección)
 - affinity_score
 - novelty_score
+- quality_score
+- diversity_score
+- exploration_score
 - popularity_penalty
 - final_score
+- popularity_bucket (`VERY_POPULAR`, `POPULAR`, `MEDIUM`, `HIDDEN`)
 - explanation
 - generated_at
+
+UNIQUE(user, movie): una película aparece una sola vez por usuario. Índice (run, section, position).
+
+# TMDBListCache
+
+`apps.movies.TMDBListCache`. Resultado de una llamada de lista a TMDB (`/discover` con ciertos filtros, `/movie/{id}/recommendations`, `/similar`) como lista ordenada de `tmdb_id`. Las películas viven en `Movie`; esto sólo evita repetir la llamada antes de `TMDB_CACHE_DAYS`.
+
+- key (UNIQUE, p. ej. `discover:sort_by=popularity.desc&vote_count.gte=300&with_genres=878&without_genres=27`)
+- tmdb_ids (JSON)
+- fetched_at
 
 # Graph
 

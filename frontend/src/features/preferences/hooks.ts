@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
+import { recommendationKeys } from "@/features/recommendations/api";
 import type { PreferencesDraft, QuickRating } from "@/types/preferences";
 
 import {
@@ -40,7 +41,10 @@ export function useUpdatePreferences() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: updatePreferences,
-    onSuccess: (preferences) => queryClient.setQueryData(preferencesKeys.current, preferences),
+    onSuccess: (preferences) => {
+      queryClient.setQueryData(preferencesKeys.current, preferences);
+      void queryClient.invalidateQueries({ queryKey: recommendationKeys.all });
+    },
   });
 }
 
@@ -53,6 +57,7 @@ export function useCompleteOnboarding() {
       queryClient.setQueryData(preferencesKeys.current, preferences);
       // Quick ratings are stored as LIKE/DISLIKE interactions.
       void queryClient.invalidateQueries({ queryKey: ["interactions"] });
+      void queryClient.invalidateQueries({ queryKey: recommendationKeys.all });
     },
   });
 }
