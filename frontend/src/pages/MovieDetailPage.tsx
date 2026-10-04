@@ -5,7 +5,7 @@ import { ApiError, getErrorMessage } from "@/api/client";
 import { PageContainer } from "@/components/layout/PageContainer";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { ErrorState } from "@/components/ui/ErrorState";
-import { LoadingState } from "@/components/ui/LoadingState";
+import { MovieDetailSkeleton } from "@/components/ui/Skeleton";
 import { MovieCreditsSection } from "@/features/movies/components/MovieCreditsSection";
 import { MovieHero } from "@/features/movies/components/MovieHero";
 import { useMovie } from "@/features/movies/hooks";
@@ -22,7 +22,7 @@ export function MovieDetailPage() {
   const movie = useMovie(movieId);
 
   if (!isValidId) return <MovieNotFound />;
-  if (movie.isPending) return <LoadingState label="Cargando película…" />;
+  if (movie.isPending) return <MovieDetailSkeleton />;
   if (movie.isError) {
     if (movie.error instanceof ApiError && movie.error.status === 404) return <MovieNotFound />;
     return (

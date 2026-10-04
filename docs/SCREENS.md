@@ -1,11 +1,14 @@
 # SCREENS.md
 
-# 1. Landing
+# 1. Home (`/`)
 
-- logo MovieVerse;
-- mensaje principal;
-- preview del mapa;
-- CTA “Explorar MovieVerse”.
+Primera pantalla con sesión (antes, la intro una vez por sesión; sin sesión, el login):
+
+- **Hero** a todo el ancho con el backdrop de 4 películas en tendencia: título, año, puntaje, sinopsis corta, "Ver ficha" y "Explorar universo". Rota cada 7 s con fundido y puntitos de navegación; se pausa con hover y respeta reduced-motion.
+- **¿Cómo te sentís hoy?**: 6 tarjetas grandes (Para reír, Para pensar, Adrenalina, Para llorar, Inspiradora, Miedo), cada una con ícono, color propio y glow al pasar el mouse. Llevan a `/mood/:slug`, con películas de TMDB según un mapeo de géneros que define el backend.
+- **Carruseles** con flechas y scroll suave: "Tendencias de la semana", "Para vos" (las primeras del recomendador) y "Seguí explorando" (las últimas películas abiertas en el mapa; si no hay, no aparece).
+
+Microinteracciones: las tarjetas aparecen escalonadas, mientras carga se ven skeletons con brillo y cada cambio de página tiene un fundido suave.
 
 # 2. Login / Registro
 
@@ -25,7 +28,7 @@ Cada card tiene "¿Por qué?", que muestra la explicación de la API. Botones "S
 
 # 5. Buscar
 
-Input + cards.
+Barra de búsqueda con **autocompletado**: 300 ms después de escribir, hasta 6 películas con mini póster, título y año, navegables con el teclado (↑/↓, Enter, Escape). Debajo, la grilla de resultados con paginación. Antes de escribir, en lugar de un estado vacío, los carruseles "Tendencias de la semana" y "Para vos".
 
 # 6. Detalle
 

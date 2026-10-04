@@ -3,8 +3,11 @@ import { apiRequest } from "@/api/client";
 import type {
   CastMember,
   Director,
+  MovieCard,
   MovieCredits,
   MovieDetail,
+  MovieList,
+  MoodResults,
   MovieSearchPage,
   MovieSummary,
 } from "@/types/movie";
@@ -57,8 +60,26 @@ interface MovieCreditsDto {
 
 export const SEARCH_MIN_LENGTH = 2;
 
+interface MovieCardDto extends MovieSummaryDto {
+  backdrop_url: string | null;
+  overview: string;
+}
+
+interface MovieListDto {
+  results: MovieCardDto[];
+  degraded: boolean;
+}
+
+interface MoodResultsDto extends MovieListDto {
+  mood: { slug: string; label: string; description: string };
+  page: number;
+  has_more: boolean;
+}
+
 export const movieKeys = {
   all: ["movies"] as const,
+  trending: ["movies", "trending"] as const,
+  mood: (slug: string, page: number) => ["movies", "mood", slug, page] as const,
   search: (query: string, page: number) => ["movies", "search", query, page] as const,
   detail: (id: number) => ["movies", "detail", id] as const,
   credits: (id: number) => ["movies", "credits", id] as const,
@@ -116,4 +137,20 @@ export async function getMovie(id: number, signal?: AbortSignal): Promise<MovieD
 export async function getMovieCredits(id: number, signal?: AbortSignal): Promise<MovieCredits> {
   const dto = await apiRequest<MovieCreditsDto>(`/movies/${id}/credits`, { signal });
   return { directors: dto.directors.map(toDirector), cast: dto.cast.map(toCastMember) };
+}
+
+function toCard(dto: MovieCardDto): MovieCard {
+  return { ...toSummary(dto), backdropUrl: dto.backdrop_url, overview: dto.overview };
+}
+
+/** Trending movies of the week (TMDB, cached by the backend). */
+export async function getTrending(signal?: AbortSignal): Promise<MovieList> {
+  const dto = await apiRequest<MovieListDto>("/movies/trending", { signal });
+  return { movies: dto.results.map(toCard), degraded: dto.degraded };
+}
+
+/** Movies for a mood of the Home; the backend maps the mood to TMDB filters. */
+export async function getMood(slug: string, page = 1, signal?: AbortSignal): Promise<MoodResults> {
+  const dto = await apiRequest<MoodResultsDto>(`/movies/mood/${encodeURIComponent(slug)}`, { params: { page }, signal });
+  return { mood: dto.mood, page: dto.page, hasMore: dto.has_more, movies: dto.results.map(toCard), degraded: dto.degraded };
 }

@@ -45,7 +45,7 @@ describe("LoginPage", () => {
     expect(session.hasSession()).toBe(false);
   });
 
-  it("stores the session and redirects to discover on success", async () => {
+  it("stores the session and redirects to the Home on success", async () => {
     mockFetch({
       "POST /auth/login": () => jsonResponse({ access: "a", refresh: "r", user: TEST_USER }),
     });
@@ -55,7 +55,7 @@ describe("LoginPage", () => {
     await userEvent.type(screen.getByLabelText("Contraseña"), "Cinefilo-2026!");
     await userEvent.click(screen.getByRole("button", { name: "Entrar al universo" }));
 
-    expect(await screen.findByRole("heading", { name: "Descubrir" })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "Inicio de MovieVerse" })).toBeInTheDocument();
     expect(session.getAccessToken()).toBe("a");
     expect(session.getRefreshToken()).toBe("r");
   });

@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router";
 import { describe, expect, it } from "vitest";
@@ -9,6 +9,7 @@ import {
   EMPTY_SEARCH_DTO,
   INTERSTELLAR_CREDITS_DTO,
   INTERSTELLAR_DETAIL_DTO,
+  INTERSTELLAR_SUMMARY_DTO,
   SEARCH_DTO,
 } from "@/test/movieFixtures";
 import { renderWithProviders, TEST_USER } from "@/test/render";
@@ -66,11 +67,16 @@ describe("MovieCard", () => {
 });
 
 describe("SearchPage", () => {
-  it("shows a hint before the user types", async () => {
-    mockFetch({ "GET /auth/me": me });
+  it("shows the trending carousel before the user types", async () => {
+    mockFetch({
+      "GET /auth/me": me,
+      "GET /movies/trending": () =>
+        jsonResponse({ results: [{ ...INTERSTELLAR_SUMMARY_DTO, backdrop_url: null, overview: "" }], degraded: false }),
+    });
     renderWithProviders(<AppRoutes />, { route: "/search", authenticated: true });
 
-    expect(await screen.findByText("¿Qué querés ver hoy?")).toBeInTheDocument();
+    const trending = await screen.findByRole("region", { name: "Tendencias de la semana" });
+    expect(await within(trending).findByRole("link", { name: /^Póster de Interstellar/ })).toHaveAttribute("href", "/movies/1");
   });
 
   it("searches (debounced) and renders results from the API", async () => {
@@ -80,7 +86,7 @@ describe("SearchPage", () => {
     });
     renderWithProviders(<AppRoutes />, { route: "/search", authenticated: true });
 
-    await userEvent.type(await screen.findByRole("searchbox"), "interstellar");
+    await userEvent.type(await screen.findByRole("combobox", { name: "Título de la película" }), "interstellar");
 
     expect(await screen.findByRole("link", { name: /^Póster de Interstellar Interstellar/ })).toHaveAttribute(
       "href",
@@ -96,7 +102,7 @@ describe("SearchPage", () => {
     mockFetch({ "GET /auth/me": me, "GET /movies/search": () => pending() });
     renderWithProviders(<AppRoutes />, { route: "/search?q=interstellar", authenticated: true });
 
-    expect(await screen.findByText("Buscando películas…")).toBeInTheDocument();
+    expect(await screen.findByRole("status", { name: "Buscando películas…" })).toBeInTheDocument();
   });
 
   it("shows an empty state when there are no results", async () => {
@@ -163,7 +169,7 @@ describe("MovieDetailPage", () => {
     mockFetch({ "GET /auth/me": me, "GET /movies/1": () => pending() });
     renderWithProviders(<AppRoutes />, { route: "/movies/1", authenticated: true });
 
-    expect(await screen.findByText("Cargando película…")).toBeInTheDocument();
+    expect(await screen.findByRole("status", { name: "Cargando película…" })).toBeInTheDocument();
   });
 
   it("shows not found for a missing movie", async () => {

@@ -5,8 +5,9 @@ import { AppLayout } from "@/components/layout/AppLayout";
 import { GuestRoute, ProtectedRoute } from "@/features/auth/ProtectedRoute";
 import { RequireOnboarding } from "@/features/preferences/RequireOnboarding";
 import { DiscoverPage } from "@/pages/DiscoverPage";
-import { IntroPage } from "@/pages/IntroPage";
+import { HomeRoute } from "@/pages/HomeRoute";
 import { LoginPage } from "@/pages/LoginPage";
+import { MoodPage } from "@/pages/MoodPage";
 import { MovieDetailPage } from "@/pages/MovieDetailPage";
 import { NotFoundPage } from "@/pages/NotFoundPage";
 import { OnboardingPage } from "@/pages/OnboardingPage";
@@ -22,8 +23,9 @@ const UniversePage = lazy(() => import("@/pages/UniversePage").then((m) => ({ de
 export function AppRoutes() {
   return (
     <Routes>
-      <Route index element={<IntroPage />} />
       <Route element={<AppLayout />}>
+        {/* `/`: the opening once per session, then the Home (or the login without a session). */}
+        <Route index element={<HomeRoute />} />
         <Route element={<GuestRoute />}>
           <Route path="login" element={<LoginPage />} />
           <Route path="register" element={<RegisterPage />} />
@@ -34,6 +36,7 @@ export function AppRoutes() {
             <Route path="discover" element={<DiscoverPage />} />
           </Route>
           <Route path="search" element={<SearchPage />} />
+          <Route path="mood/:slug" element={<MoodPage />} />
           <Route path="movies/:id" element={<MovieDetailPage />} />
           <Route path="universe" element={<UniverseStartPage />} />
           <Route

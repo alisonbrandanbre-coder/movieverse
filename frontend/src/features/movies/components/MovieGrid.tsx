@@ -15,8 +15,9 @@ interface MovieGridProps<T extends MovieSummary> {
 export function MovieGrid<T extends MovieSummary>({ movies, renderAction, destination }: MovieGridProps<T>) {
   return (
     <ul className="grid grid-cols-2 gap-x-4 gap-y-8 sm:grid-cols-3 sm:gap-x-5 md:grid-cols-4 lg:grid-cols-5">
-      {movies.map((movie) => (
-        <li key={movie.id} className="flex flex-col gap-2">
+      {movies.map((movie, index) => (
+        // Cards appear one after the other (capped, so long grids don't wait).
+        <li key={movie.id} className="flex animate-card-in flex-col gap-2" style={{ animationDelay: `${Math.min(index, 12) * 40}ms` }}>
           <MovieCard movie={movie} destination={destination} />
           {renderAction?.(movie)}
         </li>

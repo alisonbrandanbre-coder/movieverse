@@ -31,45 +31,14 @@ const STAR_LAYERS = [
 interface PlanetSpec {
   /** Position, size and opacity (Tailwind classes); keep them near the edges, away from the content column. */
   className: string;
-  /** Turns the same artwork into a different-looking world (hue, saturation, rotation). */
-  look?: string;
   /** Float cycle: different speeds so they don't move in sync. */
   duration: string;
   delay?: string;
 }
 
-// The same artwork, re-tinted and rotated, reads as a small solar system. Kept translucent and
-// mostly off the content column so posters and text always win.
-const MOONS: PlanetSpec[] = [
-  {
-    className: "left-[-3%] top-[52%] w-14 opacity-30 sm:left-[1.5%] sm:w-20 sm:opacity-40",
-    look: "-hue-rotate-30 saturate-75 rotate-[140deg]",
-    duration: "19s",
-    delay: "-6s",
-  },
-  {
-    className: "right-[6%] bottom-[6%] w-10 opacity-25 sm:w-16 sm:opacity-35",
-    look: "hue-rotate-60 saturate-50 rotate-[250deg]",
-    duration: "23s",
-    delay: "-11s",
-  },
-  {
-    className: "hidden left-[24%] top-[7%] w-9 opacity-30 blur-[0.5px] md:block",
-    look: "hue-rotate-180 saturate-50 rotate-[60deg]",
-    duration: "17s",
-    delay: "-3s",
-  },
-  {
-    className: "hidden left-[6%] bottom-[9%] w-7 opacity-25 blur-[1px] lg:block",
-    look: "hue-rotate-90 saturate-50 rotate-[300deg]",
-    duration: "21s",
-    delay: "-14s",
-  },
-];
-
-// Hero: big enough to show the artwork's detail (Login, Register, Intro), plus its moons.
-// Subtle: a smaller main planet and the moons, translucent so they don't compete with posters.
-// None: only the sky (the cinematic map, whose controls the planets would cover).
+// One planet per screen. Hero: big enough to show the artwork's detail (Login, Register,
+// Intro). Subtle: smaller and translucent so it doesn't compete with posters. None: only the
+// sky (the cinematic map, whose controls it would cover).
 const PLANETS: Record<"hero" | "subtle" | "none", PlanetSpec[]> = {
   hero: [
     {
@@ -77,9 +46,8 @@ const PLANETS: Record<"hero" | "subtle" | "none", PlanetSpec[]> = {
         "right-[-20%] top-[9%] w-[15rem] opacity-35 sm:right-[-8%] sm:w-[22rem] sm:opacity-75 lg:right-[-5%] lg:top-[6%] lg:w-[420px] lg:opacity-100",
       duration: "14s",
     },
-    ...MOONS,
   ],
-  subtle: [{ className: "right-[-9%] top-[14%] w-24 opacity-30 sm:right-[2%] sm:w-[150px] sm:opacity-50", duration: "14s" }, ...MOONS],
+  subtle: [{ className: "right-[-9%] top-[14%] w-24 opacity-30 sm:right-[2%] sm:w-[150px] sm:opacity-50", duration: "14s" }],
   none: [],
 };
 
@@ -90,7 +58,7 @@ const COMETS = [
 
 /**
  * The MovieVerse sky: three twinkling star layers, a blue and a violet glow,
- * comets crossing diagonally every ~9 s and a few slowly floating planets
+ * comets crossing diagonally every ~9 s and one slowly floating planet
  * (`planet="hero"` on Login/Register/Intro, `"subtle"` everywhere else, `"none"` on the map).
  * Fixed behind the page content; purely decorative. With
  * `prefers-reduced-motion` nothing moves and the comets are hidden.
@@ -155,7 +123,7 @@ function Planet({ spec }: { spec: PlanetSpec }) {
         alt=""
         loading="lazy"
         decoding="async"
-        className={`size-full drop-shadow-planet ${spec.look ?? ""}`}
+        className="size-full drop-shadow-planet"
       />
       <div className="absolute inset-[7%] rounded-full bg-radial-[at_30%_28%] from-transparent from-35% to-deep/80" />
     </div>

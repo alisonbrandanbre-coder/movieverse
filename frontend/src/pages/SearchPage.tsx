@@ -1,10 +1,9 @@
-import { Search } from "lucide-react";
 import { useEffect, useState, type FormEvent } from "react";
 import { useSearchParams } from "react-router";
 
 import { PageContainer, PageHeader } from "@/components/layout/PageContainer";
 import { Button } from "@/components/ui/Button";
-import { Input } from "@/components/ui/Input";
+import { SearchAutocomplete } from "@/features/movies/components/SearchAutocomplete";
 import { SearchResults } from "@/features/movies/components/SearchResults";
 import { useDebouncedValue } from "@/hooks/useDebouncedValue";
 
@@ -50,19 +49,7 @@ export function SearchPage() {
             Título de la película
           </label>
           <div className="flex-1">
-            <Input
-              id="movie-search"
-              icon={Search}
-              inputSize="lg"
-              emphasis
-              type="search"
-              autoFocus
-              autoComplete="off"
-              maxLength={100}
-              value={input}
-              onChange={(event) => setInput(event.target.value)}
-              placeholder="Ej.: Interstellar"
-            />
+            <SearchAutocomplete id="movie-search" value={input} onChange={setInput} autoFocus placeholder="Ej.: Interstellar" />
           </div>
           <Button type="submit" size="lg">
             Buscar

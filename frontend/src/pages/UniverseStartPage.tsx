@@ -6,7 +6,7 @@ import { PageContainer, PageHeader } from "@/components/layout/PageContainer";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { ErrorState } from "@/components/ui/ErrorState";
 import { Input } from "@/components/ui/Input";
-import { LoadingState } from "@/components/ui/LoadingState";
+import { MovieGridSkeleton } from "@/components/ui/Skeleton";
 import { useSavedMovies } from "@/features/interactions/hooks";
 import { MovieGrid } from "@/features/movies/components/MovieGrid";
 import { SEARCH_MIN_LENGTH } from "@/features/movies/api";
@@ -42,7 +42,7 @@ function StartSection({ icon: Icon, title, description, children }: { icon: Luci
 
 function SearchStart({ query }: { query: string }) {
   const search = useMovieSearch(query);
-  if (search.isPending) return <LoadingState label="Buscando películas…" />;
+  if (search.isPending) return <MovieGridSkeleton label="Buscando películas…" />;
   if (search.isError) {
     return <ErrorState title="No pudimos buscar" message={getErrorMessage(search.error)} onRetry={() => search.refetch()} />;
   }
@@ -75,7 +75,7 @@ function PersonalStart() {
       />
     );
   }
-  if (!loaded) return <LoadingState label="Cargando tus favoritas…" />;
+  if (!loaded) return <MovieGridSkeleton count={5} label="Cargando tus favoritas…" />;
 
   if (own.length > 0) {
     return (
@@ -92,7 +92,7 @@ function PersonalStart() {
       description="Todavía no marcaste favoritas ni «Me gusta». Arrancá por alguna de estas, muy conocidas."
     >
       {popular.isPending ? (
-        <LoadingState label="Buscando películas populares…" />
+        <MovieGridSkeleton count={5} label="Buscando películas populares…" />
       ) : popular.isError ? (
         <ErrorState title="No pudimos cargar sugerencias" message={getErrorMessage(popular.error)} onRetry={() => popular.refetch()} />
       ) : popular.data.length === 0 ? (

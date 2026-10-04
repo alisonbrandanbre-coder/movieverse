@@ -93,6 +93,10 @@ class TMDBClient:
         """`/discover/movie` with arbitrary filters (genres, dates, language, votes, sort)."""
         return self._get("/discover/movie", {**params, "page": page, "include_adult": "false"})
 
+    def get_trending_movies(self, window: str = "week", page: int = 1) -> dict[str, Any]:
+        """TMDB's trending movies of the day or the week (Home hero and carousel)."""
+        return self._get(f"/trending/movie/{window}", {"page": page})
+
     def get_most_voted_movies(self, page: int = 1) -> dict[str, Any]:
         """Most voted movies of all time: the titles most people can rate (onboarding)."""
         return self.discover_movies({"sort_by": "vote_count.desc"}, page=page)

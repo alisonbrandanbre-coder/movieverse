@@ -8,7 +8,7 @@ import { buttonClasses } from "@/components/ui/buttonClasses";
 import { Card } from "@/components/ui/Card";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { ErrorState } from "@/components/ui/ErrorState";
-import { LoadingState } from "@/components/ui/LoadingState";
+import { MovieGridSkeleton } from "@/components/ui/Skeleton";
 import { Pagination } from "@/components/ui/Pagination";
 import { useSavedMovies, useToggleInteraction } from "@/features/interactions/hooks";
 import { MovieGrid } from "@/features/movies/components/MovieGrid";
@@ -76,7 +76,7 @@ export function SavedMoviesTab({ kind }: { kind: SavedListKind }) {
   const list = useSavedMovies(kind, page);
   const config = SAVED_LISTS[kind];
 
-  if (list.isPending) return <LoadingState label={`Cargando tus ${config.listName}…`} />;
+  if (list.isPending) return <MovieGridSkeleton count={5} label={`Cargando tus ${config.listName}…`} />;
   if (list.isError) {
     return (
       <ErrorState

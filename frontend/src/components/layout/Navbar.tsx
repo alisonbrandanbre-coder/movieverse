@@ -1,4 +1,4 @@
-import { Compass, LogOut, Menu, Orbit, Search, User, X } from "lucide-react";
+import { Compass, House, LogOut, Menu, Orbit, Search, User, X } from "lucide-react";
 import { useState } from "react";
 import { Link, NavLink, useNavigate } from "react-router";
 
@@ -7,6 +7,7 @@ import { useAuth } from "@/features/auth/useAuth";
 import { SurpriseButton } from "@/features/recommendations/components/Surprise";
 
 const PRIVATE_LINKS = [
+  { to: "/", label: "Inicio", icon: House, end: true },
   { to: "/search", label: "Buscar", icon: Search },
   { to: "/discover", label: "Descubrir", icon: Compass },
   // NavLink also marks it active on /universe/:movieId (the map itself).
@@ -37,8 +38,8 @@ export function Navbar() {
 
   const links = (
     <>
-      {PRIVATE_LINKS.map(({ to, label, icon: Icon }) => (
-        <NavLink key={to} to={to} className={navLinkClass} onClick={() => setOpen(false)}>
+      {PRIVATE_LINKS.map(({ to, label, icon: Icon, end }) => (
+        <NavLink key={to} to={to} end={end} className={navLinkClass} onClick={() => setOpen(false)}>
           <Icon className="size-4" aria-hidden />
           {label}
         </NavLink>
@@ -54,7 +55,7 @@ export function Navbar() {
   return (
     <header className="sticky top-0 z-20 border-b border-line bg-base/70 backdrop-blur-lg">
       <nav aria-label="Principal" className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3 sm:px-6">
-        <Link to={isAuthenticated ? "/discover" : "/login"} className="rounded-control focus-visible:outline-2 focus-visible:outline-focus">
+        <Link to={isAuthenticated ? "/" : "/login"} className="rounded-control focus-visible:outline-2 focus-visible:outline-focus">
           <Logo />
         </Link>
         {isAuthenticated && (

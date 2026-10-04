@@ -89,6 +89,37 @@ Hasta 12 títulos conocidos (≥ 1000 votos, con póster) para la valoración r�
 
 `{id}` es siempre el id local de MovieVerse (no el de TMDB).
 
+## Home lists
+
+```text
+GET /movies/trending
+GET /movies/mood/{slug}?page=1
+```
+
+`trending`: películas en tendencia de la semana (TMDB `/trending/movie/week`), cacheadas **6 horas** (más seguido que el resto de TMDB, porque cambia durante la semana). Sólo las que tienen póster.
+
+```json
+{
+  "results": [{"id": 12, "tmdb_id": 693134, "title": "Dune: Parte dos", "release_year": 2024, "poster_url": "...", "vote_average": 8.1, "backdrop_url": "https://image.tmdb.org/t/p/w1280/...", "overview": "…"}],
+  "degraded": false
+}
+```
+
+`mood/{slug}`: películas para un estado de ánimo de la Home. El backend define qué significa cada uno (`backend/apps/movies/moods.py`: géneros de TMDB con AND/OR, géneros excluidos, keyword y puntaje mínimo; siempre por popularidad con 400+ votos) y lo pide a `/discover/movie` con caché de `TMDB_CACHE_DAYS` por página; la clave de caché incluye los filtros, así que editar un mood invalida su caché. Slugs: `para-reir`, `para-pensar`, `adrenalina`, `para-llorar`, `inspiradora`, `miedo`. `page` de 1 a 5.
+
+```json
+{
+  "mood": {"slug": "para-llorar", "label": "Para llorar", "description": "Dramas románticos que llegan al corazón."},
+  "page": 1,
+  "has_more": true,
+  "results": [ /* como trending */ ],
+  "degraded": false
+}
+```
+
+- Slug inexistente → `404 MOOD_NOT_FOUND`. `page` fuera de rango → `400`.
+- Si TMDB falla: se sirve la lista cacheada aunque esté vencida; si no hay caché, **no se rompe**: `200` con películas del catálogo local (las más populares para `trending`; las de los géneros del mood para `mood`, sólo la página 1) y `degraded: true`.
+
 ## Search
 
 `q` obligatorio, 2–100 caracteres tras recortar espacios; `page` opcional (1–500).

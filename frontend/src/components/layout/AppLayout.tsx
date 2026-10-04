@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { Outlet, useLocation } from "react-router";
 
 import { SpaceBackground } from "@/components/brand/SpaceBackground";
@@ -12,6 +13,11 @@ export function AppLayout() {
   // The cinematic map fills the viewport: no page scroll and the TMDB credit moves inside it.
   const immersive = pathname.startsWith("/universe/");
 
+  // A new page starts at the top (query-only changes, like a search or a tab, keep their place).
+  useEffect(() => {
+    window.scrollTo?.({ top: 0 });
+  }, [pathname]);
+
   return (
     <SurpriseProvider>
       <div className={`relative isolate flex flex-col text-fg ${immersive ? "h-dvh overflow-hidden" : "min-h-screen"}`}>
@@ -19,7 +25,10 @@ export function AppLayout() {
         <SpaceBackground planet={immersive ? "none" : HERO_PLANET_ROUTES.includes(pathname) ? "hero" : "subtle"} />
         <Navbar />
         <main className={immersive ? "relative min-h-0 flex-1" : "flex-1"}>
-          <Outlet />
+          {/* Keyed by route: every page change fades in (opacity only, see --animate-page-in). */}
+          <div key={pathname} className={`animate-page-in ${immersive ? "h-full" : ""}`}>
+            <Outlet />
+          </div>
         </main>
         {immersive ? (
           <p className="pointer-events-none absolute bottom-1 left-1/2 z-10 -translate-x-1/2 text-[10px] text-fg-muted">

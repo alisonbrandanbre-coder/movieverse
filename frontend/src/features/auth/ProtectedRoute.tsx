@@ -19,6 +19,6 @@ export function ProtectedRoute() {
 export function GuestRoute() {
   const { status } = useAuth();
   if (status === "loading") return <LoadingState label="Verificando sesión…" />;
-  if (status === "authenticated") return <Navigate to="/discover" replace />;
+  if (status === "authenticated") return <Navigate to="/" replace />;
   return <Outlet />;
 }

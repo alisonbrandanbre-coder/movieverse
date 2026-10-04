@@ -6,13 +6,13 @@ import { jsonResponse, mockFetch } from "@/test/fetchMock";
 import { renderWithProviders, TEST_USER } from "@/test/render";
 
 describe("NotFoundPage", () => {
-  it("is a space-themed 404 that leads back to Descubrir", async () => {
+  it("is a space-themed 404 that leads back to the Home", async () => {
     mockFetch({ "GET /auth/me": () => jsonResponse(TEST_USER) });
     renderWithProviders(<AppRoutes />, { route: "/esta/ruta/no-existe", authenticated: true });
 
     expect(await screen.findByRole("heading", { level: 1, name: "Te perdiste en el espacio" })).toBeInTheDocument();
     expect(screen.getByText(/404/)).toBeInTheDocument();
-    expect(await screen.findByRole("link", { name: /Volver a Descubrir/ })).toHaveAttribute("href", "/discover");
+    expect(await screen.findByRole("link", { name: /Volver al inicio/ })).toHaveAttribute("href", "/");
     expect(screen.getByRole("link", { name: /Buscar películas/ })).toHaveAttribute("href", "/search");
   });
 

@@ -54,7 +54,7 @@ function LostConstellation() {
   );
 }
 
-/** 404: lost in space. Back to Descubrir (or to the login without a session) or to Buscar. */
+/** 404: lost in space. Back to the Home (or to the login without a session) or to Buscar. */
 export function NotFoundPage() {
   const { status } = useAuth();
   const authenticated = status === "authenticated";
@@ -69,9 +69,9 @@ export function NotFoundPage() {
           Esta estrella no existe en nuestro universo: puede que el enlace esté mal escrito o que la página ya no esté.
         </p>
         <div className="mt-2 flex flex-col gap-3 sm:flex-row">
-          <Link to={authenticated ? "/discover" : "/login"} className={buttonClasses({ size: "lg" })}>
+          <Link to={authenticated ? "/" : "/login"} className={buttonClasses({ size: "lg" })}>
             <Compass className="size-4" aria-hidden />
-            {authenticated ? "Volver a Descubrir" : "Ir a iniciar sesión"}
+            {authenticated ? "Volver al inicio" : "Ir a iniciar sesión"}
           </Link>
           {authenticated && (
             <Link to="/search" className={buttonClasses({ variant: "secondary", size: "lg" })}>

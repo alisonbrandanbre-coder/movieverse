@@ -14,7 +14,7 @@ Este archivo preserva todas sin bloquear la primera entrega.
 | Favoritos/pendientes/vistas | ✅ | |
 | Modo sorpresa | ✅ | |
 | Series | | ✅ |
-| Estado de ánimo | | ✅ |
+| Estado de ánimo | ✅ (6 moods en la Home) | |
 | Maratones | | ✅ |
 | Estadísticas | | ✅ |
 | Logros | | ✅ |

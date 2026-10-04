@@ -9,6 +9,12 @@ class MovieNotFound(ServiceError):
     default_detail = "La película no existe."
 
 
+class MoodNotFound(ServiceError):
+    status_code = 404
+    default_code = "MOOD_NOT_FOUND"
+    default_detail = "Ese estado de ánimo no existe."
+
+
 class CatalogUnavailable(ExternalServiceUnavailable):
     default_code = "TMDB_UNAVAILABLE"
     default_detail = (

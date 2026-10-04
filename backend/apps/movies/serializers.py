@@ -41,6 +41,22 @@ class MovieSummarySerializer(serializers.ModelSerializer):
         return poster_url(movie.poster_path)
 
 
+class MovieCardSerializer(MovieSummarySerializer):
+    """Summary plus what the Home hero needs (backdrop and synopsis)."""
+
+    backdrop_url = serializers.SerializerMethodField()
+
+    class Meta(MovieSummarySerializer.Meta):
+        fields = [*MovieSummarySerializer.Meta.fields, "backdrop_url", "overview"]
+
+    def get_backdrop_url(self, movie: Movie) -> str | None:
+        return backdrop_url(movie.backdrop_path)
+
+
+class MoodQuerySerializer(serializers.Serializer):
+    page = serializers.IntegerField(min_value=1, max_value=5, default=1)
+
+
 class MovieDetailSerializer(serializers.ModelSerializer):
     release_year = serializers.IntegerField(read_only=True)
     poster_url = serializers.SerializerMethodField()

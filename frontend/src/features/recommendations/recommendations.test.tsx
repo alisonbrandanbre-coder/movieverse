@@ -103,7 +103,7 @@ describe("DiscoverPage", () => {
   it("shows a loading state", async () => {
     renderDiscover({ "GET /recommendations": () => pending() });
 
-    expect(await screen.findByText("Buscando películas para vos…")).toBeInTheDocument();
+    expect(await screen.findByRole("status", { name: "Buscando películas para vos…" })).toBeInTheDocument();
   });
 
   it("shows an error state with retry", async () => {

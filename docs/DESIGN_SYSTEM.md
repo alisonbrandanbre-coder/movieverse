@@ -24,9 +24,9 @@ Identidad visual de MovieVerse: **cinematográfico estilo Letterboxd/MUBI con un
 | `fg-muted` | `#A9B4E0` | `text-fg-muted` | Metadatos, footer, placeholders |
 | `label` | `#9FC0FF` | `text-label`, utility `eyebrow` | Etiquetas pequeñas en mayúsculas |
 | `blue` | `#4F7DFF` | `from-blue` | Inicio del gradiente, glow azul |
-| `sky` | `#6CC9FF` | `text-sky` | Sólo en el mapa: conexiones por actor (celeste, bien distinto de los violetas) |
-| `coral` | `#FF8A7A` | `text-coral` | Sólo en el mapa: conexiones por saga y el botón "Ver saga completa" |
-| `mint` | `#5FE0B8` | `text-mint` | Sólo en el mapa: conexiones por universo compartido |
+| `sky` | `#6CC9FF` | `text-sky` | Mapa: conexiones por actor (celeste, bien distinto de los violetas) · mood "Para pensar" |
+| `coral` | `#FF8A7A` | `text-coral` | Mapa: conexiones por saga y "Ver saga completa" · mood "Adrenalina" |
+| `mint` | `#5FE0B8` | `text-mint` | Mapa: conexiones por universo compartido · mood "Para reír" |
 | `violet` | `#8B5CFF` | `to-violet`, `bg-violet/15` | Fin del gradiente, fondos tenues |
 | `violet-light` | `#A98DFF` | `text-violet-light` | "VERSE", segunda línea del claim, subrayado del nav |
 | `violet-soft` | `#B39BFF` | `text-violet-soft` | Links, chips de género, íconos de estados vacíos |
@@ -70,10 +70,15 @@ Etiquetas: utility **`eyebrow`** = 12 px, bold, mayúsculas, `letter-spacing: 4p
 | `shadow-poster` / `shadow-card` | Profundidad de pósters y tarjetas |
 | `bg-brand` | Gradiente horizontal `blue → violet` (botón primario) |
 | `eyebrow` | Etiqueta pequeña en mayúsculas |
-| `scrollbar-none` | Fila con scroll horizontal sin barra visible (tabs en mobile); se sigue pudiendo deslizar |
+| `scrollbar-none` | Fila con scroll horizontal sin barra visible (tabs en mobile, carruseles); se sigue pudiendo deslizar |
+| `bg-skeleton` | Superficie de los skeletons: bloque `raised` con un brillo `violet-soft` que lo recorre (con `animate-shimmer`) |
 | `drop-shadow-planet` | Halo violeta alrededor del planeta |
 | `animate-twinkle` · `animate-float` · `animate-comet` | Fondo espacial |
 | `animate-fade-up` | Entrada de bloques (también cada paso del onboarding) |
+| `animate-card-in` | Aparición escalonada de tarjetas (grillas, carruseles, moods): cada una con un `animation-delay` creciente, con tope para no hacer esperar |
+| `animate-page-in` | Cambio de ruta: la página nueva aparece con un fundido (sólo opacidad: un `transform` volvería al contenedor el bloque de referencia de los overlays fijos) |
+| `animate-shimmer` | Brillo que recorre los skeletons |
+| `animate-hero-zoom` | Zoom lento (Ken Burns) del fondo del hero de la Home |
 | `animate-node-in` · `animate-edge-in` | Mapa: una película "se enciende" en su lugar (escala + blur) y su conexión aparece en fundido, escalonadas según el orden de llegada |
 | `animate-star-in` | Estrellas que aparecen una a una (`StarsLoadingState`) |
 | `animate-pop` | Pulso de 0,35 s del ícono de un `ToggleButton` al activarse |
@@ -87,7 +92,7 @@ Etiquetas: utility **`eyebrow`** = 12 px, bold, mayúsculas, `letter-spacing: 4p
 | --- | --- |
 | `Logo` | Claqueta + wordmark **MOVIE** (`fg`) **VERSE** (`violet-light`) en Bebas Neue, `tracking-[2px]`. `size="sm"` (header) · `"lg"` (intro). |
 | `ClapperMark` | Sólo el ícono SVG: claqueta inclinada, franjas en gradiente azul→violeta, cuerpo azul marino con líneas claras y estrella dorada de 4 puntas. Mismo dibujo que `public/favicon.svg`. |
-| `SpaceBackground` | Cielo reutilizable: 3 capas de estrellas (`box-shadow`, posiciones deterministas) con titileo, mancha azul arriba-izquierda y violeta abajo-derecha, 2 cometas en diagonal cada 9 s y varios planetas que flotan a distinto ritmo (`src/assets/planeta.webp`). Es la misma ilustración, re-teñida (`hue-rotate`/`saturate`) y rotada para que cada una parezca otro mundo, con una sombra radial `deep` (lado nocturno) que la vuelve esfera y le baja el detalle. Van pegados a los bordes, lejos de la columna de contenido. Prop `planet`: `"hero"` (planeta grande ≈420 px + lunas, Login/Registro/Intro), `"subtle"` (uno de ≈150 px y 2–4 lunas de 28–80 px, translúcidos, resto de pantallas) o `"none"` (sólo cielo: el mapa, donde taparían los controles). `fixed` detrás del contenido; ya lo incluyen `AppLayout` (elige la variante según la ruta) e `IntroPage`. |
+| `SpaceBackground` | Cielo reutilizable: 3 capas de estrellas (`box-shadow`, posiciones deterministas) con titileo, mancha azul arriba-izquierda y violeta abajo-derecha, 2 cometas en diagonal cada 9 s y **un solo planeta** por pantalla que flota (`src/assets/planeta.webp`), con una sombra radial `deep` (lado nocturno) que lo vuelve esfera. Prop `planet`: `"hero"` (≈420 px, Login/Registro/Intro), `"subtle"` (≈150 px, translúcido, resto de pantallas) o `"none"` (sólo cielo: el mapa, donde taparía los controles). Sin lunas ni planetas chicos desenfocados. `fixed` detrás del contenido; ya lo incluyen `AppLayout` (elige la variante según la ruta) e `IntroPage`. |
 | `Constellation` | Mini constelación decorativa (Interstellar al centro con punto dorado, unida a Inception/Memento por DIRECTOR, Gravity por GÉNERO y The Martian por SIMILAR). En `AuthLayout`. |
 | `TAGLINE` | `{ lead, accent }` del claim. |
 
@@ -110,6 +115,9 @@ ffmpeg -i ImagenesReferencia/Planeta.png -vf "scale=800:800:flags=lanczos,format
 | `TextField` | `components/ui/TextField.tsx` | `Input` + `<label>` real + error accesible (`aria-describedby`). Para formularios. |
 | `Tooltip` | `components/ui/Tooltip.tsx` | Tooltip hover/focus. Funciona con botones deshabilitados si el botón lleva `pointer-events-none`. |
 | `Modal` | `components/ui/Modal.tsx` | Diálogo accesible (`role="dialog"`, `aria-modal`, `labelledBy` = id de su título) sobre un fondo `deep/80` con blur, en un portal. Se cierra con Esc, la ✕ o un clic afuera; mantiene el Tab adentro, enfoca su primer control (el ✕ va al final del DOM para que el foco caiga en las acciones) y devuelve el foco a quien lo abrió. Bloquea el scroll de la página. |
+| `Skeleton` | `components/ui/Skeleton.tsx` | Placeholders con brillo (`bg-skeleton` + `animate-shimmer`) en lugar de spinners donde el contenido tiene forma conocida: `Skeleton` (bloque), `MovieCardSkeleton`, `MovieGridSkeleton` (mismas columnas que `MovieGrid`), `CarouselSkeleton` y `MovieDetailSkeleton`. Cada grupo lleva un `role="status"` con `aria-label` legible. `LoadingState` / `StarsLoadingState` quedan para esperas sin forma (sesión, mapa, sorpresa). |
+| `Carousel` | `components/ui/Carousel.tsx` | Fila horizontal con título display (+ ícono y descripción opcionales, `action` a la derecha), flechas ‹ › que desplazan una "página" con scroll suave (instantáneo con reduced-motion) y se ocultan en los extremos y en pantallas táctiles, scroll-snap, sin barra visible y enfocable con teclado (`role="group"`). Se desborda hasta el borde del `PageContainer` para que asome la tarjeta siguiente. |
+| `InlineError` | `components/ui/InlineError.tsx` | Error compacto de una sección dentro de una página (una fila de carrusel): una línea con ícono y "Reintentar", donde un `ErrorState` sería demasiado grande. |
 | `Chip` | `components/ui/Chip.tsx` | Toggle con forma de píldora para selección múltiple (géneros, décadas, idiomas). `selected` → `aria-pressed`; seleccionado: borde `violet-light`, fondo `violet/25` y `shadow-halo`. `tone="danger"` para elecciones negativas (géneros a evitar). |
 | `ToggleButton` | `components/ui/ToggleButton.tsx` | Acción on/off con ícono (Favorita, Pendiente, Vista, Me gusta, No me interesa). `pressed` → `aria-pressed`; activo: mismo estilo que `Chip`, ícono relleno (`fillWhenPressed`, apagarlo en íconos como `Eye`) y `animate-pop`. `tone` `accent`/`danger`, `size` `sm`/`md`, `label` opcional (sin label, pasar `aria-label`). |
 | `ChoiceCard` | `components/ui/ChoiceCard.tsx` | Opción única como tarjeta: `<input type="radio">` real (`sr-only`) dentro de un `<label>`; marcado: borde `violet-light` + halo. Agrupar en un `role="radiogroup"`. Nivel de descubrimiento. |
@@ -118,7 +126,9 @@ ffmpeg -i ImagenesReferencia/Planeta.png -vf "scale=800:800:flags=lanczos,format
 | `Disclosure` | `components/ui/Disclosure.tsx` | Toggle chico (`aria-expanded` + `aria-controls`) que despliega un panel `raised` con borde `line-strong` debajo. `label` visible, `ariaLabel` para dar contexto ("¿Por qué Primer?"), `icon` opcional. Se usa para el "¿Por qué?" de las recomendaciones. |
 | `Pagination` | `components/ui/Pagination.tsx` | "Anterior · Página X de Y · Siguiente"; no renderiza nada con una sola página. Búsqueda y listas del perfil. |
 | `MovieCard` | `features/movies/components/MovieCard.tsx` | Póster 2:3 (radio 14 px, sombra); título, año y ★ puntaje dorado. Hover: sube 6 px, borde violeta con glow y chip "Explorar universo", que es un link propio a `/universe/:id` (siempre visible en pantallas táctiles). `destination="universe"`: toda la tarjeta lleva al mapa, con "Empezar acá" sobre el póster y sin chip (pantalla Universo). Sin póster: placeholder con gradiente y el título en Bebas Neue (`PosterImage`). Usar dentro de `MovieGrid`. |
-| `MovieGrid` | `features/movies/components/MovieGrid.tsx` | Grilla responsive de `MovieCard`. `renderAction(movie)` opcional agrega un control debajo de cada tarjeta, fuera del link (p. ej. "Quitar" en el perfil). `destination` se pasa a cada `MovieCard`. |
+| `MovieGrid` | `features/movies/components/MovieGrid.tsx` | Grilla responsive de `MovieCard`. `renderAction(movie)` opcional agrega un control debajo de cada tarjeta, fuera del link (p. ej. "Quitar" en el perfil). `destination` se pasa a cada `MovieCard`. Las tarjetas aparecen escalonadas (`animate-card-in`, 40 ms entre cada una, hasta 12). |
+| `MovieCarousel` | `features/movies/components/MovieCarousel.tsx` | `Carousel` de `MovieCard` (36 → 48 de ancho según pantalla), con aparición escalonada; `movies` indefinido muestra `CarouselSkeleton` y `fallback` reemplaza la fila (p. ej. un `InlineError`). |
+| `SearchAutocomplete` | `features/movies/components/SearchAutocomplete.tsx` | Campo de búsqueda con sugerencias (combobox WAI-ARIA): 300 ms después de escribir, hasta 6 películas con mini póster, título y año en un panel `base/95` con blur. Se abre al escribir (no al enfocar), ↑/↓ recorren, Enter abre la película resaltada, Escape cierra. Comparte caché con la grilla de resultados. |
 | `StarsLoadingState` | `components/ui/StarsLoadingState.tsx` | Carga temática: una constelación chica cuyas estrellas se encienden en secuencia (la central en dorado), con texto. Para el mapa. |
 | `EmptyState` / `ErrorState` / `LoadingState` | `components/ui/` | Ícono en círculo con glow, título display, descripción y CTA (`children`). |
 
@@ -126,8 +136,8 @@ ffmpeg -i ImagenesReferencia/Planeta.png -vf "scale=800:800:flags=lanczos,format
 
 | Componente | Archivo | Uso |
 | --- | --- | --- |
-| `AppLayout` | `components/layout/AppLayout.tsx` | `SpaceBackground` + header + footer con atribución de TMDB. Envuelve todas las rutas salvo la intro. |
-| `Navbar` | `components/layout/Navbar.tsx` | Header translúcido con blur y borde inferior. Con sesión: Buscar / Descubrir / Universo (ícono `Orbit`, activo también dentro de `/universe/:movieId`) / Mi perfil / Sorprendeme (ícono `Dices`, abre el modo sorpresa) / Salir (activo: fondo violeta tenue + subrayado `violet-light`); sin sesión sólo el logo. La fila completa se muestra desde `lg` (1024 px); por debajo, botón de menú (`aria-controls`) que despliega un `<nav aria-label="Menú">`. |
+| `AppLayout` | `components/layout/AppLayout.tsx` | `SpaceBackground` + header + footer con atribución de TMDB. Cada cambio de ruta aparece con `animate-page-in` y vuelve arriba de la página (los cambios sólo de query, como una búsqueda o un tab, conservan la posición). Envuelve todas las rutas salvo la intro. |
+| `Navbar` | `components/layout/Navbar.tsx` | Header translúcido con blur y borde inferior. El logo lleva a `/`. Con sesión: Inicio (ícono `House`, activo sólo en `/`) / Buscar / Descubrir / Universo (ícono `Orbit`, activo también dentro de `/universe/:movieId`) / Mi perfil / Sorprendeme (ícono `Dices`, abre el modo sorpresa) / Salir (activo: fondo violeta tenue + subrayado `violet-light`); sin sesión sólo el logo. La fila completa se muestra desde `lg` (1024 px); por debajo, botón de menú (`aria-controls`) que despliega un `<nav aria-label="Menú">`. |
 | `PageContainer` | `components/layout/PageContainer.tsx` | Ancho máximo `6xl` y padding estándar. |
 | `PageHeader` | `components/layout/PageContainer.tsx` | `eyebrow` + `h1` en Bebas Neue + `description`. |
 | `AuthLayout` | `components/layout/AuthLayout.tsx` | Login/Registro: pitch + constelación a la izquierda, tarjeta con el formulario a la derecha. Se apilan en mobile (la constelación se oculta < 640 px). |
@@ -136,9 +146,10 @@ ffmpeg -i ImagenesReferencia/Planeta.png -vf "scale=800:800:flags=lanczos,format
 
 | Ruta | Pantalla | Notas |
 | --- | --- | --- |
-| `/` | `IntroPage` | 3 s: logo con zoom que se desvanece → crawl en perspectiva (`rotateX(26deg)`, Barlow Condensed, `crawl`) → redirige a `/login` o `/discover`. "Saltar intro ›" (o Esc). Una vez por sesión (`sessionStorage["mv:intro-seen"]`); con reduced-motion se saltea. Sólo el estilo de un crawl de ciencia ficción: sin logos, tipografías ni música de terceros. |
+| `/` | `HomeRoute` → `IntroPage` + `HomePage` | **Intro** (una vez por sesión, encima de la página): 3 s, logo con zoom que se desvanece → crawl en perspectiva (`rotateX(26deg)`, Barlow Condensed, `crawl`); "Saltar intro ›" o Esc; con reduced-motion se saltea. Sólo el estilo de un crawl de ciencia ficción: sin logos, tipografías ni música de terceros. Después, sin sesión → `/login`; con sesión (y onboarding completo) → **Home**: `h1` oculto, hero a todo el ancho con el backdrop de 4 películas en tendencia (degradados hacia `base` abajo y a la izquierda, eyebrow "Tendencia de la semana", título display grande, año, ★ dorado, sinopsis de 3 líneas, "Ver ficha" `primary` y "Explorar universo" `secondary`, puntitos de navegación; rota cada 7 s con fundido de 1 s y zoom lento, se pausa con hover o foco y no rota con reduced-motion), "¿Cómo te sentís hoy?" (6 tarjetas de mood en 2 columnas / 3 desde `lg`: ícono en círculo, título display, frase, tinte y borde de su color y un glow de ese color al hover/foco; colores: Para reír `mint`, Para pensar `sky`, Adrenalina `coral`, Para llorar `blue`, Inspiradora `violet-light`, Miedo `danger`) y los carruseles "Tendencias de la semana", "Para vos" (con "Ver todas" → Descubrir) y "Seguí explorando" (últimas películas abiertas en el mapa, guardadas en este navegador; si no hay, no se muestra). |
+| `/mood/:slug` | `MoodPage` | Encabezado en una tarjeta con el tinte del mood (ícono grande, eyebrow "Según tu ánimo", título y descripción que manda el backend), chips para saltar a los otros 5 moods, `MovieGrid` con skeleton, aviso si TMDB no respondió y vino del catálogo local, `Pagination` (hasta 5 páginas). Slug inexistente: `EmptyState` con vuelta al inicio. |
 | `/login`, `/register` | `AuthLayout` | "Iniciá sesión / Tu universo te está esperando." · botón "Entrar al universo". |
-| `/search` | `SearchPage` | Eyebrow "EXPLORAR", barra grande con `emphasis`, contador, `MovieGrid`. |
+| `/search` | `SearchPage` | Eyebrow "EXPLORAR", `SearchAutocomplete` grande con `emphasis`, contador, `MovieGrid`. Sin texto todavía: carruseles "Tendencias de la semana" y "Para vos" en lugar de un estado vacío. |
 | `/onboarding` | `OnboardingPage` | `PageHeader` "Armá tu constelación" + `Card` con eyebrow "Paso X de 6", `ProgressBar`, título del paso en display (recibe el foco al cambiar de paso), contenido y pie con Atrás (`secondary`) / Siguiente o Terminar (`primary`). Pasos con `Chip`, `ChoiceCard` y, en la valoración rápida, pósters con dos `ToggleButton` de sólo ícono. |
 | `/movies/:id` | `MovieDetailPage` | Backdrop a lo ancho con máscara/degradado hacia `base`, póster, título display, puntaje dorado, año · duración · idioma, chips de género, sinopsis, "Explorar universo" (link a `/universe/:id`), fila de `ToggleButton` (Favorita · Pendiente · Vista · Me gusta · No me interesa) con mensaje de confirmación en `violet-soft` (`role="status"`), reparto en fila horizontal con scroll, enfocable (`tabIndex=0`, `aria-label`) para desplazarla con el teclado. |
 | `/profile` | `ProfilePage` | Avatar + `h1`, `Tabs` Favoritas / Pendientes / Vistas (con contador) / Preferencias. Listas: `MovieGrid` con "Quitar" (`ghost`) + `Pagination`; vacías: `EmptyState` en `Card` con CTA a Buscar. Preferencias: secciones con `eyebrow` y los mismos selectores del onboarding. |

@@ -54,7 +54,7 @@ describe("Onboarding routing", () => {
     expect(await screen.findByRole("heading", { level: 1, name: "Descubrir" })).toBeInTheDocument();
   });
 
-  it("logs in a returning user straight into Discover", async () => {
+  it("logs in a returning user straight into the Home", async () => {
     mockFetch({
       "POST /auth/login": () => jsonResponse({ access: "a", refresh: "r", user: TEST_USER }),
       "GET /preferences": () => jsonResponse(DEMO_PREFERENCES_DTO),
@@ -65,7 +65,7 @@ describe("Onboarding routing", () => {
     await userEvent.type(screen.getByLabelText("Contraseña"), "Cinefilo-2026!");
     await userEvent.click(screen.getByRole("button", { name: "Entrar al universo" }));
 
-    expect(await screen.findByRole("heading", { level: 1, name: "Descubrir" })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { level: 1, name: "Inicio de MovieVerse" })).toBeInTheDocument();
   });
 });
 

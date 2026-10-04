@@ -18,8 +18,9 @@ from django.db import IntegrityError, transaction
 from django.db.models import Count, Q
 from django.utils import timezone
 
-from ..exceptions import CatalogRateLimited, CatalogUnavailable, MovieNotFound
+from ..exceptions import CatalogRateLimited, CatalogUnavailable, MoodNotFound, MovieNotFound
 from ..models import Genre, Movie, MoviePerson, Person, TMDBListCache
+from ..moods import BASE_PARAMS, MOODS
 from .normalizers import (
     PersonCredit,
     genre_tmdb_ids,
@@ -39,6 +40,11 @@ MAX_DB_ID = 2**63 - 1
 WELL_KNOWN_MIN_VOTES = 1000
 WELL_KNOWN_TMDB_PAGES = 2
 TMDB_PARALLEL_CALLS = 6
+# Home lists: trending changes during the week, so it is refreshed more often than the
+# rest of the TMDB cache; mood results are stable and follow TMDB_CACHE_DAYS.
+TRENDING_MAX_AGE = timedelta(hours=6)
+HOME_LIST_SIZE = 20
+MOOD_MAX_PAGE = 5
 
 TMDBFetch = Callable[[TMDBClient], dict[str, Any]]
 # Values that change often in TMDB and are refreshed on every search hit.
@@ -58,6 +64,14 @@ class SearchResult:
 class CachedLists:
     lists: dict[str, list[Movie]]
     failed: list[str]  # keys TMDB could not answer and that had no cache
+
+
+@dataclass(frozen=True)
+class MovieList:
+    movies: list[Movie]
+    degraded: bool  # TMDB failed and there was no cache: local catalog instead
+    page: int = 1
+    has_more: bool = False
 
 
 @dataclass(frozen=True)
@@ -201,8 +215,11 @@ class MovieService:
 
     # ------------------------------------------------------------ cached lists
 
-    def cached_lists(self, calls: dict[str, TMDBFetch]) -> CachedLists:
-        """Movies of several TMDB list calls, asking TMDB at most once per `TMDB_CACHE_DAYS`.
+    def cached_lists(
+        self, calls: dict[str, TMDBFetch], max_age: timedelta | None = None
+    ) -> CachedLists:
+        """Movies of several TMDB list calls, asking TMDB at most once per `TMDB_CACHE_DAYS`
+        (or `max_age`).
 
         `calls` maps a stable cache key to a function that receives the client and returns
         the raw payload (with `results`). Stale or missing lists are fetched in parallel
@@ -214,7 +231,7 @@ class MovieService:
         stale = {
             key: fetch
             for key, fetch in calls.items()
-            if key not in entries or self._is_stale(entries[key].fetched_at)
+            if key not in entries or self._is_stale(entries[key].fetched_at, max_age)
         }
         failed = []
         for key, result in self._fetch_parallel(stale).items():
@@ -264,6 +281,54 @@ class MovieService:
                     results[key] = exc
         return results
 
+    # ------------------------------------------------------------ home lists
+
+    def trending(self) -> MovieList:
+        """TMDB's trending movies of the week (cached 6 h). If TMDB fails with no cache,
+        the most popular local movies, flagged as degraded."""
+        key = "trending:week"
+        cached = self.cached_lists(
+            {key: lambda client: client.get_trending_movies("week")}, max_age=TRENDING_MAX_AGE
+        )
+        movies = [m for m in cached.lists.get(key, []) if m.poster_path][:HOME_LIST_SIZE]
+        if movies:
+            return MovieList(movies=movies, degraded=False)
+        local = (
+            Movie.objects.exclude(poster_path="")
+            .filter(vote_count__gte=WELL_KNOWN_MIN_VOTES)
+            .order_by("-popularity", "id")[:HOME_LIST_SIZE]
+        )
+        return MovieList(movies=list(local), degraded=True)
+
+    def mood(self, slug: str, page: int = 1) -> MovieList:
+        """Movies for a Home mood (apps/movies/moods.py), from TMDB discover with cache.
+        Unknown slug → `MoodNotFound`. If TMDB fails with no cache, well-voted local
+        movies of the mood's genres (first page only), flagged as degraded."""
+        mood = MOODS.get(slug)
+        if mood is None:
+            raise MoodNotFound()
+        page = max(1, min(page, MOOD_MAX_PAGE))
+        params = {**BASE_PARAMS, **mood.params}
+        # The filters are part of the key: editing a mood in moods.py invalidates its cache.
+        filters = "&".join(f"{k}={v}" for k, v in sorted(params.items()))
+        key = f"mood:{slug}:{page}:{filters}"
+        cached = self.cached_lists({key: lambda client: client.discover_movies(params, page=page)})
+        movies = [m for m in cached.lists.get(key, []) if m.poster_path]
+        if key not in cached.failed:
+            return MovieList(
+                movies=movies,
+                degraded=False,
+                page=page,
+                has_more=page < MOOD_MAX_PAGE and len(movies) >= HOME_LIST_SIZE - 2,
+            )
+        local = (
+            Movie.objects.filter(genres__tmdb_id__in=mood.fallback_genres, vote_count__gte=400)
+            .exclude(poster_path="")
+            .distinct()
+            .order_by("-popularity", "id")[:HOME_LIST_SIZE]
+        )
+        return MovieList(movies=list(local) if page == 1 else [], degraded=True, page=page)
+
     # ------------------------------------------------------------ onboarding
 
     def onboarding_sample(
@@ -303,10 +368,10 @@ class MovieService:
     # ------------------------------------------------------------ internals
 
     @staticmethod
-    def _is_stale(synced_at: datetime | None) -> bool:
+    def _is_stale(synced_at: datetime | None, max_age: timedelta | None = None) -> bool:
         if synced_at is None:
             return True
-        return timezone.now() - synced_at > timedelta(days=settings.TMDB_CACHE_DAYS)
+        return timezone.now() - synced_at > (max_age or timedelta(days=settings.TMDB_CACHE_DAYS))
 
     def _apply_details(self, movie: Movie, payload: dict[str, Any]) -> None:
         genres = self._upsert_genres(normalize_genres(payload.get("genres") or []))

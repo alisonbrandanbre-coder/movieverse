@@ -69,6 +69,15 @@
 
   --animate-twinkle: twinkle 4s ease-in-out infinite alternate;
   --animate-fade-up: fade-up 0.6s ease-out both;
+  /* Cards appearing one after the other (give each a growing animation-delay). */
+  --animate-card-in: fade-up 0.45s ease-out both;
+  /* Route changes: the new page fades in. Opacity only: a transform would make the page
+     the containing block of fixed overlays (intro, dialogs) while it runs. */
+  --animate-page-in: page-in 0.35s ease-out both;
+  /* Skeleton placeholders: a soft light sweeping across. */
+  --animate-shimmer: shimmer 1.6s ease-in-out infinite;
+  /* Home hero: the background image slowly zooms (Ken Burns), paused with reduced motion. */
+  --animate-hero-zoom: hero-zoom 14s ease-out both;
   --animate-pop: pop 0.35s ease-out;
   --animate-node-in: node-in 0.55s cubic-bezier(0.2, 0.9, 0.3, 1.25) both;
   --animate-edge-in: edge-in 0.7s ease-out both;
@@ -88,6 +97,18 @@
     to { opacity: 1; transform: none; }
   }
   /* Feedback when a toggle (Favorita, Me gusta…) turns on. */
+  @keyframes page-in {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+  @keyframes shimmer {
+    from { background-position: 150% 0; }
+    to { background-position: -50% 0; }
+  }
+  @keyframes hero-zoom {
+    from { transform: scale(1.08); }
+    to { transform: scale(1); }
+  }
   @keyframes pop {
     0% { transform: scale(1); }
     45% { transform: scale(1.35); }
@@ -169,6 +190,18 @@
   &::-webkit-scrollbar {
     display: none;
   }
+}
+
+/* Skeleton surface: night-blue block with a light sweeping across (animate-shimmer). */
+@utility bg-skeleton {
+  background-color: var(--color-raised);
+  background-image: linear-gradient(
+    100deg,
+    transparent 30%,
+    color-mix(in srgb, var(--color-violet-soft) 14%, transparent) 50%,
+    transparent 70%
+  );
+  background-size: 200% 100%;
 }
 
 /* Primary brand gradient (buttons, poster placeholder, logo stripes). */

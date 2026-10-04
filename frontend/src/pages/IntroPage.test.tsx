@@ -27,11 +27,11 @@ describe("IntroPage", () => {
     expect(screen.queryByRole("region", { name: "Introducción de MovieVerse" })).not.toBeInTheDocument();
   });
 
-  it("sends users with a session to Discover", async () => {
+  it("sends users with a session to the Home", async () => {
     mockFetch({ "GET /auth/me": () => jsonResponse(TEST_USER) });
     renderWithProviders(<AppRoutes />, { route: "/", authenticated: true });
 
     await userEvent.click(screen.getByRole("button", { name: "Saltar intro" }));
-    expect(await screen.findByRole("heading", { name: "Descubrir" })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "Inicio de MovieVerse" })).toBeInTheDocument();
   });
 });

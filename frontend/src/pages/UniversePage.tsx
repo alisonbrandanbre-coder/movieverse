@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { ArrowLeft, Orbit } from "lucide-react";
-import type { ReactNode } from "react";
+import { useEffect, type ReactNode } from "react";
 import { Link, useParams } from "react-router";
 
 import { ApiError, getErrorMessage } from "@/api/client";
@@ -9,7 +9,9 @@ import { Card } from "@/components/ui/Card";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { ErrorState } from "@/components/ui/ErrorState";
 import { StarsLoadingState } from "@/components/ui/StarsLoadingState";
+import { useAuth } from "@/features/auth/useAuth";
 import { getNeighborhood, graphKeys } from "@/features/universe/api";
+import { rememberMapVisit } from "@/features/universe/history";
 import { UniverseMap } from "@/features/universe/components/UniverseMap";
 
 function Centered({ children }: { children: ReactNode }) {
@@ -26,6 +28,21 @@ export function UniversePage() {
     enabled: isValidId,
     staleTime: 10 * 60_000,
   });
+  const { user } = useAuth();
+
+  // "Seguí explorando" on the Home: remember the movies opened as the map's center.
+  const center = neighborhood.data?.nodes.find((n) => n.id === neighborhood.data?.center);
+  useEffect(() => {
+    if (!center) return;
+    rememberMapVisit(user?.id, {
+      id: center.id,
+      tmdbId: center.tmdbId,
+      title: center.title,
+      releaseYear: center.year,
+      posterUrl: center.posterUrl,
+      voteAverage: center.score,
+    });
+  }, [center, user?.id]);
 
   const notFound = (
     <Centered>

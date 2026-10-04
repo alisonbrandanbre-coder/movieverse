@@ -12,6 +12,24 @@ export interface MovieSummary {
   voteAverage: number | null;
 }
 
+/** A summary with what the Home hero needs. */
+export interface MovieCard extends MovieSummary {
+  backdropUrl: string | null;
+  overview: string;
+}
+
+export interface MovieList {
+  movies: MovieCard[];
+  /** TMDB failed with nothing cached: the list comes from the local catalog. */
+  degraded: boolean;
+}
+
+export interface MoodResults extends MovieList {
+  mood: { slug: string; label: string; description: string };
+  page: number;
+  hasMore: boolean;
+}
+
 export interface MovieDetail extends MovieSummary {
   originalTitle: string;
   overview: string;

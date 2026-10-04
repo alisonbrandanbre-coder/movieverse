@@ -1,6 +1,6 @@
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 
-import { getMovie, getMovieCredits, movieKeys, SEARCH_MIN_LENGTH, searchMovies } from "./api";
+import { getMood, getMovie, getMovieCredits, getTrending, movieKeys, SEARCH_MIN_LENGTH, searchMovies } from "./api";
 
 export function useMovieSearch(query: string, page = 1) {
   const normalized = query.trim();
@@ -28,5 +28,22 @@ export function useMovieCredits(id: number) {
     queryFn: ({ signal }) => getMovieCredits(id, signal),
     enabled: Number.isInteger(id) && id > 0,
     staleTime: 10 * 60_000,
+  });
+}
+
+export function useTrending() {
+  return useQuery({
+    queryKey: movieKeys.trending,
+    queryFn: ({ signal }) => getTrending(signal),
+    staleTime: 30 * 60_000,
+  });
+}
+
+export function useMood(slug: string, page = 1) {
+  return useQuery({
+    queryKey: movieKeys.mood(slug, page),
+    queryFn: ({ signal }) => getMood(slug, page, signal),
+    placeholderData: keepPreviousData,
+    staleTime: 30 * 60_000,
   });
 }

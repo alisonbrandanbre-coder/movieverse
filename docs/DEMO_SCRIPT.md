@@ -44,7 +44,9 @@ Guion de presentación del MVP, adaptado a lo que quedó implementado al cierre 
 
 ## 1:30 — Descubrir con «¿Por qué?» (60 s)
 
-👉 Queda en **Descubrir**. Señalar las tres secciones: «Para vos», «Joyas para descubrir», «Continuá explorando».
+👉 Entra a la **Home**: el hero rota entre las tendencias de la semana y debajo están «¿Cómo te sentís hoy?» y los carruseles. Sin detenerse (10 s): «Si no sé qué buscar, arranco por acá: tendencias o un estado de ánimo». Menú **Descubrir**.
+
+👉 Señalar las tres secciones: «Para vos», «Joyas para descubrir», «Continuá explorando».
 
 🗣️ «Este usuario ama la ciencia ficción, tiene Interstellar, Blade Runner y La llegada como favoritas y vio Matrix y Origen. Fíjense que no le recomiendo Matrix ni Origen de nuevo: **nunca recomiendo lo que ya viste ni lo que rechazaste**.»
 

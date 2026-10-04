@@ -9,7 +9,7 @@ import { buttonClasses } from "@/components/ui/buttonClasses";
 import { Card } from "@/components/ui/Card";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { ErrorState } from "@/components/ui/ErrorState";
-import { LoadingState } from "@/components/ui/LoadingState";
+import { MovieGridSkeleton } from "@/components/ui/Skeleton";
 import { RecommendationSection } from "@/features/recommendations/components/RecommendationSection";
 import { SurpriseButton } from "@/features/recommendations/components/Surprise";
 import { useRecommendations, useRefreshRecommendations } from "@/features/recommendations/hooks";
@@ -68,7 +68,7 @@ export function DiscoverPage() {
     return (
       <PageContainer className="flex flex-col gap-8">
         {header}
-        <LoadingState label="Buscando películas para vos…" />
+        <MovieGridSkeleton label="Buscando películas para vos…" />
       </PageContainer>
     );
   }

@@ -13,8 +13,9 @@ MovieVerse es una plataforma web para encontrar qué ver sin terminar siempre en
 | | Funcionalidad |
 |---|---|
 | 🔐 | Registro e inicio de sesión (JWT) |
+| 🏠 | **Home**: hero con las películas en tendencia de la semana, «¿Cómo te sentís hoy?» (6 estados de ánimo) y carruseles de tendencias, recomendaciones y lo último que exploraste en el mapa |
 | 🧭 | Onboarding en 6 pasos: géneros favoritos y a evitar, décadas, idiomas, nivel de descubrimiento (Familiar · Equilibrado · Explorador) y valoración rápida |
-| 🔎 | Búsqueda en TMDB y ficha completa (sinopsis, director, reparto, puntaje) |
+| 🔎 | Búsqueda en TMDB con autocompletado y ficha completa (sinopsis, director, reparto, puntaje) |
 | ⭐ | Favoritas, pendientes, vistas, «Me gusta» y «No me interesa» |
 | ✨ | **Descubrir**: «Para vos», «Joyas para descubrir» y «Continuá explorando», cada película con su «¿Por qué?». El feedback cambia las siguientes recomendaciones |
 | 🎲 | **Modo sorpresa**: una película al azar entre tus mejores recomendaciones (nunca la obvia número 1, con prioridad para las menos conocidas) |
@@ -190,6 +191,8 @@ Base `/api/v1`, autenticación JWT (`Authorization: Bearer …`). Los errores ti
 | POST | `/auth/register` · `/auth/login` · `/auth/refresh` · `/auth/logout` | Cuenta y sesión |
 | GET | `/auth/me` | Usuario autenticado |
 | GET | `/movies/search?q=&page=` | Búsqueda en TMDB (resultados cacheados localmente) |
+| GET | `/movies/trending` | Tendencias de la semana (caché de 6 h) |
+| GET | `/movies/mood/{slug}?page=` | Películas para un estado de ánimo de la Home |
 | GET | `/movies/{id}` · `/movies/{id}/credits` | Ficha y créditos |
 | GET · PUT | `/preferences` | Preferencias |
 | POST | `/preferences/onboarding` | Guarda el onboarding completo |
@@ -211,7 +214,7 @@ El MVP prioriza el mapa y las recomendaciones. Quedan para las próximas iteraci
 
 | Iteración | Funcionalidad |
 |---|---|
-| Sprint 6 | **Maratones**: secuencias de películas para una noche o un fin de semana (por saga, director o tema) · búsqueda por estado de ánimo |
+| Sprint 6 | **Maratones**: secuencias de películas para una noche o un fin de semana (por saga, director o tema) |
 | Sprint 7 | **Estadísticas** personales (géneros, décadas, directores más vistos) · **logros** por explorar |
 | Sprint 8 | **Amigos** y **compatibilidad** de gustos entre dos usuarios |
 | Sprint 9 | **Camino entre dos películas**: el recorrido más corto en el mapa (Interstellar → Amélie) |
