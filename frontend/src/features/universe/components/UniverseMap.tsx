@@ -21,7 +21,7 @@ import { Button } from "@/components/ui/Button";
 import { buttonClasses } from "@/components/ui/buttonClasses";
 import type { ConnectionType, Neighborhood } from "@/types/graph";
 
-import { getNeighborhood, graphKeys } from "../api";
+import { getNeighborhood, getSaga, graphKeys } from "../api";
 import {
   chipLayout,
   connectionsOf,
@@ -89,10 +89,10 @@ function MapCanvas({ initial }: { initial: Neighborhood }) {
   const [padding] = useState<Padding>(() =>
     window.matchMedia?.("(max-width: 639px)").matches ? PHONE_FIT_PADDING : FIT_PADDING,
   );
-  const fit = useMemo<FitViewOptions>(() => ({ padding, maxZoom: MAX_FIT_ZOOM }), [padding]);
+  const fit = useMemo<FitViewOptions<MovieNodeType>>(() => ({ padding, maxZoom: MAX_FIT_ZOOM }), [padding]);
   const canvasRef = useRef<HTMLDivElement>(null);
   const nodesReady = useNodesInitialized();
-  const clearedOverlays = useRef(false);
+  const initialFitDone = useRef(false);
   const start = useMemo(() => createMap(initial, aspect), [initial, aspect]);
   const [nodes, setNodes, onNodesChange] = useNodesState<MovieNodeType>(start.nodes);
   const [edges, setEdges] = useEdgesState<ConnectionEdgeType>(start.edges);
@@ -104,6 +104,7 @@ function MapCanvas({ initial }: { initial: Neighborhood }) {
   const [hoveredNodeId, setHoveredNodeId] = useState<number | null>(null);
   const [hiddenTypes, setHiddenTypes] = useState<ReadonlySet<ConnectionType>>(() => new Set());
   const [expanding, setExpanding] = useState<number | null>(null);
+  const [loadingSaga, setLoadingSaga] = useState(false);
   const [feedback, setFeedback] = useState<Feedback>(null);
   const [degraded, setDegraded] = useState(initial.degraded);
 
@@ -125,6 +126,12 @@ function MapCanvas({ initial }: { initial: Neighborhood }) {
 
   // Hovering a movie (or, without hover, the selected one) lights its connections up.
   const spotlightId = hoveredNodeId ?? selectedId;
+  // Its chips get their own layout (only they show), so they don't cover each other either.
+  const spotlightChips = useMemo(() => {
+    if (spotlightId === null) return chips;
+    const id = nodeId(spotlightId);
+    return chipLayout(nodes, edges.filter((e) => e.source === id || e.target === id), hiddenTypes);
+  }, [spotlightId, chips, nodes, edges, hiddenTypes]);
   const highlighted = useMemo(() => {
     if (spotlightId === null) return null;
     const ids = new Set([spotlightId]);
@@ -157,11 +164,12 @@ function MapCanvas({ initial }: { initial: Neighborhood }) {
       spotlightId,
       highlighted,
       orphans,
-      chips,
+      chips: spotlightChips,
       select,
       hoverNode: setHoveredNodeId,
+      hoverEdge: setHoveredEdgeId,
     }),
-    [rootId, focusId, selectedId, hoveredEdgeId, spotlightId, highlighted, orphans, chips, select],
+    [rootId, focusId, selectedId, hoveredEdgeId, spotlightId, highlighted, orphans, spotlightChips, select],
   );
 
   function toggleType(type: ConnectionType) {
@@ -226,6 +234,39 @@ function MapCanvas({ initial }: { initial: Neighborhood }) {
     }
   }
 
+  // The neighborhood shows at most 3 movies of the center's saga; the rest is one click away.
+  const sagaOnMap = edges.filter(
+    (e) => e.data?.connection.type === "SAGA" && (e.data.connection.source === rootId || e.data.connection.target === rootId),
+  ).length;
+  const sagaMissing = initial.saga !== null && sagaOnMap + 1 < initial.saga.total;
+
+  async function showSaga() {
+    setLoadingSaga(true);
+    setFeedback(null);
+    try {
+      const saga = await queryClient.fetchQuery({
+        queryKey: graphKeys.saga(rootId),
+        queryFn: ({ signal }) => getSaga(rootId, signal),
+        staleTime: 10 * 60_000,
+      });
+      const result = mergeNeighborhood(nodes, edges, saga, null);
+      setNodes(result.nodes);
+      setEdges(result.edges);
+      setFeedback({
+        text:
+          result.added.length > 0
+            ? `${result.added.length} ${result.added.length === 1 ? "película más" : "películas más"} de la saga${saga.saga ? ` ${saga.saga.name}` : ""}.`
+            : "Toda la saga ya está en el mapa.",
+        tone: "info",
+      });
+      window.setTimeout(() => void flow.fitView({ ...fit, duration: 700 }).then(() => keepOverlaysClear(400)), 80);
+    } catch (error) {
+      setFeedback({ text: getErrorMessage(error, "No pudimos traer la saga. Probá de nuevo."), tone: "error" });
+    } finally {
+      setLoadingSaga(false);
+    }
+  }
+
   function goTo(movieId: number) {
     setPath((current) => visit(current, movieId));
     setSelectedId(movieId);
@@ -248,10 +289,14 @@ function MapCanvas({ initial }: { initial: Neighborhood }) {
       const canvas = canvasRef.current;
       if (!canvas) return;
       const area = canvas.getBoundingClientRect();
-      const movies = [...canvas.querySelectorAll<HTMLElement>(".react-flow__node")].map((el) => {
-        const node = el.getBoundingClientRect();
-        const title = el.querySelector("p")?.parentElement?.getBoundingClientRect() ?? node;
-        return { left: Math.min(node.left, title.left), right: Math.max(node.right, title.right), top: node.top, bottom: node.bottom };
+      // From React Flow's layout, not the DOM: nodes may still be scaled by their appear
+      // animation. Titles are 160% of the poster wide (30% overhang on each side).
+      const movies = flow.getNodes().map((node) => {
+        const width = node.measured?.width ?? FALLBACK_SIZE.width;
+        const height = node.measured?.height ?? FALLBACK_SIZE.height;
+        const topLeft = flow.flowToScreenPosition({ x: node.position.x - width * 0.3, y: node.position.y });
+        const bottomRight = flow.flowToScreenPosition({ x: node.position.x + width * 1.3, y: node.position.y + height });
+        return { left: topLeft.x, top: topLeft.y, right: bottomRight.x, bottom: bottomRight.y };
       });
       const covering = [...canvas.querySelectorAll<HTMLElement>("[data-map-overlay], .react-flow__minimap")]
         .map((el) => el.getBoundingClientRect())
@@ -279,13 +324,13 @@ function MapCanvas({ initial }: { initial: Neighborhood }) {
     [flow, fit, padding],
   );
 
-  // Once React Flow has measured and fitted the first map.
+  // The first fit is ours (not React Flow's `fitView` prop, which could run after the
+  // overlay check and undo it): fit once the nodes are measured, then keep overlays clear.
   useEffect(() => {
-    if (!nodesReady || clearedOverlays.current) return;
-    clearedOverlays.current = true;
-    const timer = window.setTimeout(() => keepOverlaysClear(0), 60);
-    return () => window.clearTimeout(timer);
-  }, [nodesReady, keepOverlaysClear]);
+    if (!nodesReady || initialFitDone.current) return;
+    initialFitDone.current = true;
+    void flow.fitView(fit).then(() => window.setTimeout(() => keepOverlaysClear(0), 50));
+  }, [nodesReady, flow, fit, keepOverlaysClear]);
 
   function clearMap() {
     const fresh = createMap(initial, aspect);
@@ -319,8 +364,6 @@ function MapCanvas({ initial }: { initial: Neighborhood }) {
           onPaneClick={() => setSelectedId(null)}
           nodesConnectable={false}
           elementsSelectable={false}
-          fitView
-          fitViewOptions={fit}
           minZoom={0.2}
           maxZoom={1.8}
           colorMode="dark"
@@ -427,6 +470,11 @@ function MapCanvas({ initial }: { initial: Neighborhood }) {
             onExpand={() => void expand(selected.id)}
             onCenter={() => goTo(selected.id)}
             onClose={() => setSelectedId(null)}
+            saga={
+              selected.id === rootId && sagaMissing && initial.saga
+                ? { total: initial.saga.total, loading: loadingSaga, onShow: () => void showSaga() }
+                : undefined
+            }
           />
         )}
       </div>

@@ -76,7 +76,21 @@ def normalize_movie_details(payload: dict[str, Any]) -> dict[str, Any]:
     fields = normalize_movie(payload)
     runtime = _number(payload.get("runtime"), int, None)
     fields["runtime"] = runtime if runtime and 0 < runtime < 32767 else None
+    collection = payload.get("belongs_to_collection")
+    has_collection = isinstance(collection, dict) and isinstance(collection.get("id"), int)
+    fields["collection_tmdb_id"] = collection["id"] if has_collection else None
+    fields["collection_name"] = _text(collection.get("name"), 255) if has_collection else ""
+    fields["keyword_ids"] = keyword_ids(payload)
     return fields
+
+
+def keyword_ids(payload: dict[str, Any]) -> list[int]:
+    """Details fetched with `append_to_response=keywords` carry `keywords: {keywords: [...]}`."""
+    block = payload.get("keywords")
+    items = block.get("keywords") if isinstance(block, dict) else None
+    return sorted(
+        {k["id"] for k in items or [] if isinstance(k, dict) and isinstance(k.get("id"), int)}
+    )
 
 
 def genre_tmdb_ids(payload: dict[str, Any]) -> list[int]:

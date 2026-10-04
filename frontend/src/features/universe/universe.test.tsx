@@ -45,7 +45,8 @@ function renderMap(routes: Parameters<typeof mockFetch>[0], route = "/universe/1
   return fetchMock;
 }
 
-const nodeButton = (name: string) => screen.findByRole("button", { name });
+// The map is lazy and React Flow measures first: allow more than the default 1s under load.
+const nodeButton = (name: string) => screen.findByRole("button", { name }, { timeout: 4000 });
 
 beforeEach(() => mockReactFlow());
 
@@ -63,7 +64,7 @@ describe("UniversePage", () => {
     expect(screen.getByRole("button", { name: "Inception (2010)" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Memento (2000)" })).toBeInTheDocument();
     const legend = screen.getByRole("group", { name: "Leyenda de conexiones" });
-    for (const type of ["Director", "Actor", "Similar", "Género"]) {
+    for (const type of ["Saga", "Universo", "Director", "Actor", "Similar", "Género"]) {
       expect(within(legend).getByText(type)).toBeInTheDocument();
     }
     expect(screen.getByRole("navigation", { name: "Recorrido" })).toHaveTextContent("Interstellar");
@@ -291,9 +292,8 @@ describe("Map legibility", () => {
     await nodeButton("Interstellar (2014)");
     await waitFor(() => expect(chipTexts()).toContain("Similar"));
 
-    // Chips without room (they would cover a poster) show on hover.
-    await userEvent.hover(screen.getByRole("button", { name: "Inception (2010)" }));
-    await waitFor(() => expect(chipTexts()).toEqual(["Christopher Nolan"]));
+    // Only the chips that cover no poster nor another chip show (just the name, never cut).
+    expect(chipTexts().every((text) => !text?.includes("…") && !text?.includes("+"))).toBe(true);
   });
 
   it("the legend filters connection types and can be collapsed", async () => {
@@ -328,5 +328,69 @@ describe("Map legibility", () => {
 
     await userEvent.unhover(gravity);
     await waitFor(() => expect(screen.getByRole("button", { name: "Memento (2000)" }).parentElement).not.toHaveClass("opacity-30"));
+  });
+});
+
+describe("Sagas", () => {
+  const sagaNode = (id: number, title: string, year: number) => node(id, title, year);
+  const GOBLET = {
+    center: 1,
+    nodes: [sagaNode(1, "Harry Potter y el cáliz de fuego", 2005), sagaNode(2, "Harry Potter y la piedra filosofal", 2001), node(3, "Donnie Brasco", 1997)],
+    edges: [
+      edge(1, 2, "SAGA", "De la saga Harry Potter", 1, "Saga Harry Potter"),
+      edge(1, 3, "DIRECTOR", "Dirigidas por Mike Newell", 0.92, "Mike Newell"),
+    ],
+    degraded: false,
+    saga: { name: "Harry Potter", total: 4 },
+  };
+  const FULL_SAGA = {
+    center: 1,
+    nodes: [
+      sagaNode(1, "Harry Potter y el cáliz de fuego", 2005),
+      sagaNode(2, "Harry Potter y la piedra filosofal", 2001),
+      sagaNode(4, "Harry Potter y la cámara secreta", 2002),
+      sagaNode(5, "Harry Potter y la Orden del Fénix", 2007),
+    ],
+    edges: [
+      edge(1, 2, "SAGA", "De la saga Harry Potter", 1, "Saga Harry Potter"),
+      edge(1, 4, "SAGA", "De la saga Harry Potter", 1, "Saga Harry Potter"),
+      edge(1, 5, "SAGA", "De la saga Harry Potter", 1, "Saga Harry Potter"),
+    ],
+    degraded: false,
+    saga: { name: "Harry Potter", total: 4 },
+  };
+
+  it("the center's panel adds the rest of its saga to the map", async () => {
+    renderMap({
+      "GET /graph/movies/1": () => jsonResponse(GOBLET),
+      "GET /graph/movies/1/saga": () => jsonResponse(FULL_SAGA),
+    });
+
+    await userEvent.click(await nodeButton("Harry Potter y el cáliz de fuego (2005)"));
+    const panel = screen.getByRole("complementary", { name: /Detalle de Harry Potter y el cáliz de fuego/ });
+    await userEvent.click(within(panel).getByRole("button", { name: "Ver saga completa (4)" }));
+
+    expect(await nodeButton("Harry Potter y la Orden del Fénix (2007)")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Harry Potter y la cámara secreta (2002)" })).toBeInTheDocument();
+    expect(screen.getAllByRole("button", { name: "Harry Potter y la piedra filosofal (2001)" })).toHaveLength(1);
+    expect(screen.getByText("2 películas más de la saga Harry Potter.")).toBeInTheDocument();
+    expect(within(panel).queryByRole("button", { name: /Ver saga completa/ })).not.toBeInTheDocument();
+  });
+
+  it("no saga button when the whole saga is already there or the movie has none", async () => {
+    renderMap({ "GET /graph/movies/1": () => jsonResponse(INTERSTELLAR) });
+
+    await userEvent.click(await nodeButton("Interstellar (2014)"));
+
+    expect(screen.queryByRole("button", { name: /Ver saga completa/ })).not.toBeInTheDocument();
+  });
+
+  it("chips name the saga and their tooltip has the full reason", async () => {
+    renderMap({ "GET /graph/movies/1": () => jsonResponse(GOBLET) });
+
+    await userEvent.hover(await nodeButton("Harry Potter y la piedra filosofal (2001)"));
+
+    await waitFor(() => expect(screen.getByTestId("edge-chip")).toHaveTextContent("Saga Harry Potter"));
+    expect(screen.getByRole("tooltip")).toHaveTextContent("De la saga Harry Potter");
   });
 });

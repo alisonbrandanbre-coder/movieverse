@@ -325,11 +325,15 @@ export function visit(path: number[], movieId: number): number[] {
   return index >= 0 ? path.slice(0, index + 1) : [...path, movieId];
 }
 
-/** Chip text for an edge: the main reason, short ("Mike Newell"), plus how many more there are. */
+/** Chip text for an edge: just the main reason, short ("Mike Newell", "Saga Harry Potter"). */
 export function chipText(connection: GraphConnection): string {
-  const [main, ...rest] = connection.reasons;
-  const text = main?.short || main?.label || connection.label;
-  return rest.length > 0 ? `${text} +${rest.length}` : text;
+  const main = connection.reasons[0];
+  return main?.short || main?.label || connection.label;
+}
+
+/** Every reason in full ("Ambas con Michael Gambon · Comparten Fantasía"): the chip's tooltip. */
+export function chipTooltip(connection: GraphConnection): string {
+  return connection.reasons.map((r) => r.label).join(" · ") || connection.label;
 }
 
 export interface ChipSpot {
@@ -337,12 +341,14 @@ export interface ChipSpot {
   y: number;
   /** Shown without hovering: it overlaps neither another chip nor a movie. */
   fits: boolean;
+  /** Estimated width (flow units), so labels are never cut. */
+  width: number;
 }
 
 // Chip estimate in flow units (12px bold text, icon, padding), a bit generous on purpose.
 const CHIP_HEIGHT = 26;
-const CHIP_CHAR_WIDTH = 7.2;
-const CHIP_PADDING = 42;
+const CHIP_CHAR_WIDTH = 7.4;
+const CHIP_PADDING = 40;
 const CHIP_MARGIN = 6;
 // Where along the line's visible part a chip may go: the middle first, then further out.
 const CHIP_STOPS = [0.5, 0.62, 0.38, 0.74, 0.26, 0.85];
@@ -353,7 +359,7 @@ const HANDLE_AT = 0.38;
  * Where each edge's chip goes (on the line's visible part, between the two node boxes) and
  * whether it can always be shown. Strongest edges claim their spot first, trying the middle
  * and then other points of the line; a chip that would still cover a movie or another chip
- * sits in the middle and only shows on hover/selection. Uses measured node heights when
+ * only shows on hover/selection, at the first point that at least clears every poster. Uses measured node heights when
  * React Flow has them (titles of one or two lines).
  */
 export function chipLayout(nodes: MovieNode[], edges: ConnectionEdge[], hidden: ReadonlySet<ConnectionType> = new Set()): Map<string, ChipSpot> {
@@ -396,13 +402,13 @@ export function chipLayout(nodes: MovieNode[], edges: ConnectionEdge[], hidden: 
       other.left + other.width + CHIP_MARGIN <= chip.left ||
       chip.top + chip.height + CHIP_MARGIN <= other.top ||
       other.top + other.height + CHIP_MARGIN <= chip.top;
-    const free =
-      !hidden.has(edge.data.connection.type) && end > start
-        ? CHIP_STOPS.map(chipAt).find(({ box }) => boxes.every(apart(box)) && placed.every(apart(box)))
-        : undefined;
+    const stops = end > start ? CHIP_STOPS.map(chipAt) : [];
+    const free = hidden.has(edge.data.connection.type)
+      ? undefined
+      : stops.find(({ box }) => boxes.every(apart(box)) && placed.every(apart(box)));
     if (free) placed.push(free.box);
-    const spot = free ?? chipAt(0.5);
-    spots.set(edge.id, { x: spot.x, y: spot.y, fits: free !== undefined });
+    const spot = free ?? stops.find(({ box }) => boxes.every(apart(box))) ?? chipAt(0.5);
+    spots.set(edge.id, { x: spot.x, y: spot.y, fits: free !== undefined, width });
   }
   return spots;
 }

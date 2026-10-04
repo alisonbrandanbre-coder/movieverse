@@ -1,4 +1,4 @@
-import { Crosshair, ExternalLink, LoaderCircle, Orbit, X } from "lucide-react";
+import { Crosshair, ExternalLink, Library, LoaderCircle, Orbit, X } from "lucide-react";
 import { Link } from "react-router";
 
 import { Button } from "@/components/ui/Button";
@@ -18,6 +18,8 @@ interface NodePanelProps {
   onExpand: () => void;
   onCenter: () => void;
   onClose: () => void;
+  /** Center only, when part of its saga is not on the map yet. */
+  saga?: { total: number; loading: boolean; onShow: () => void };
 }
 
 /**
@@ -34,6 +36,7 @@ export function NodePanel({
   onExpand,
   onCenter,
   onClose,
+  saga,
 }: NodePanelProps) {
   return (
     <aside
@@ -107,7 +110,19 @@ export function NodePanel({
         )}
       </div>
 
-      <div className="flex shrink-0 flex-col gap-2 border-t border-line px-5 py-4 sm:flex-row">
+      {saga && (
+        <div className="shrink-0 border-t border-line px-5 pt-4">
+          <Button variant="secondary" className="w-full" onClick={saga.onShow} disabled={saga.loading || atLimit}>
+            {saga.loading ? (
+              <LoaderCircle className="size-4 animate-spin" aria-hidden />
+            ) : (
+              <Library className="size-4 text-coral" aria-hidden />
+            )}
+            {saga.loading ? "Sumando la saga…" : `Ver saga completa (${saga.total})`}
+          </Button>
+        </div>
+      )}
+      <div className={`flex shrink-0 flex-col gap-2 px-5 py-4 sm:flex-row ${saga ? "" : "border-t border-line"}`}>
         {isExpanded ? (
           <Button className="flex-1" onClick={onCenter}>
             <Crosshair className="size-4" aria-hidden />

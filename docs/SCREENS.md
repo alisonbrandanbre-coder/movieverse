@@ -71,8 +71,9 @@ Implementado en Sprint 4 (`/universe/:movieId`, React Flow / `@xyflow/react`):
 - "Universo" en el menú principal lleva a `/universe`: buscador para elegir la película de inicio, tus favoritas y «Me gusta» como punto de partida o, si no tenés, películas muy conocidas.
 - Fondo espacial con zoom, pan y minimapa discreto. En mobile el minimapa no se muestra.
 - Disposición radial (una elipse con la forma de la pantalla; en teléfonos, tres columnas compactas), sin superposiciones y con las conexiones más fuertes más cerca del centro. En escritorio los pósters se ven de ~90 px (vecinos) y ~150 px (centro).
-- Aristas que se distinguen por color y trazo: director dorado sólido y grueso, actor celeste sólido, similar violeta punteado y género gris azulado discontinuo y fino; el grosor crece con la fuerza.
-- Cada arista lleva un chip con ícono y motivo corto ("Mike Newell", "Brendan Gleeson", "Similar", "Fantasía", con "+1" si hay más). Si los chips se pisarían, sólo se muestran los de la película con hover o seleccionada.
+- Aristas que se distinguen por color y trazo: saga coral sólida y la más gruesa, universo verde menta en trazos largos, director dorado sólido, actor celeste sólido, similar violeta punteado y género gris azulado discontinuo y fino; el grosor crece con la fuerza.
+- Cada arista lleva un chip con ícono y sólo el nombre ("Saga Harry Potter", "Universo Marvel", "Mike Newell", "Michael Gambon", "Similar", "Fantasía"); el texto completo va en el tooltip y en el panel. Los chips nunca se cortan ni pisan pósters u otros chips: los que no entran aparecen al pasar el mouse por su línea.
+- Sagas: como máximo 3 películas de la misma saga (y 4 entre saga y universo). En el panel del nodo central, "Ver saga completa (8)" suma las que faltan.
 - Hover sobre una película: se resaltan sus conexiones y se atenúa el resto.
 - Los vecinos se agrupan por tipo de conexión alrededor del centro (zonas).
 - Leyenda abajo a la izquierda que también filtra (click en un tipo lo oculta o muestra) y se puede colapsar. La leyenda y el minimapa no tapan películas: el encuadre les deja lugar.

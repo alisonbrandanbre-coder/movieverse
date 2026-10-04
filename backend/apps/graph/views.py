@@ -18,3 +18,13 @@ class MovieGraphView(APIView):
         params.is_valid(raise_exception=True)
         result = GraphService().neighborhood(movie_id, limit=params.validated_data["limit"])
         return Response(serialize_neighborhood(result))
+
+
+class MovieSagaView(APIView):
+    """Every released movie of a movie's saga, as a neighborhood centered on it (404 if none)."""
+
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = "tmdb"  # may fetch the TMDB collection the first time
+
+    def get(self, request: Request, movie_id: int) -> Response:
+        return Response(serialize_neighborhood(GraphService().saga(movie_id)))

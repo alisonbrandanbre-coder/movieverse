@@ -1,6 +1,6 @@
 /** Graph API: a movie's neighborhood on the cinematic map. Built by GraphService (backend). */
 import { apiRequest } from "@/api/client";
-import type { ConnectionReason, ConnectionType, GraphMovie, Neighborhood } from "@/types/graph";
+import type { ConnectionReason, ConnectionType, GraphMovie, Neighborhood, SagaInfo } from "@/types/graph";
 
 interface GraphNodeDto {
   id: number;
@@ -27,10 +27,12 @@ interface NeighborhoodDto {
   nodes: GraphNodeDto[];
   edges: GraphEdgeDto[];
   degraded: boolean;
+  saga?: SagaInfo | null;
 }
 
 export const graphKeys = {
   movie: (id: number) => ["graph", id] as const,
+  saga: (id: number) => ["graph", id, "saga"] as const,
 };
 
 function toMovie(dto: GraphNodeDto): GraphMovie {
@@ -45,7 +47,15 @@ function toMovie(dto: GraphNodeDto): GraphMovie {
   };
 }
 
+function toNeighborhood(dto: NeighborhoodDto): Neighborhood {
+  return { center: dto.center, nodes: dto.nodes.map(toMovie), edges: dto.edges, degraded: dto.degraded, saga: dto.saga ?? null };
+}
+
 export async function getNeighborhood(movieId: number, signal?: AbortSignal): Promise<Neighborhood> {
-  const dto = await apiRequest<NeighborhoodDto>(`/graph/movies/${movieId}`, { params: { limit: 12 }, signal });
-  return { center: dto.center, nodes: dto.nodes.map(toMovie), edges: dto.edges, degraded: dto.degraded };
+  return toNeighborhood(await apiRequest<NeighborhoodDto>(`/graph/movies/${movieId}`, { params: { limit: 12 }, signal }));
+}
+
+/** Every released movie of the movie's saga, as SAGA edges from it ("Ver saga completa"). */
+export async function getSaga(movieId: number, signal?: AbortSignal): Promise<Neighborhood> {
+  return toNeighborhood(await apiRequest<NeighborhoodDto>(`/graph/movies/${movieId}/saga`, { signal }));
 }

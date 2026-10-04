@@ -62,7 +62,17 @@ class TMDBClient:
         return self._get("/search/movie", {"query": query, "page": page, "include_adult": "false"})
 
     def get_movie_details(self, tmdb_id: int) -> dict[str, Any]:
-        return self._get(f"/movie/{int(tmdb_id)}")
+        """Details plus `keywords` (shared universes) in one call; `belongs_to_collection`
+        (sagas) is part of the details."""
+        return self._get(f"/movie/{int(tmdb_id)}", {"append_to_response": "keywords"})
+
+    def get_collection(self, collection_tmdb_id: int) -> dict[str, Any]:
+        """A saga (TMDB collection): `name` and its movies in `parts`. Graph."""
+        return self._get(f"/collection/{int(collection_tmdb_id)}")
+
+    def search_keywords(self, query: str) -> dict[str, Any]:
+        """Keyword ids by name (used to curate shared universes, see apps/graph/universes.py)."""
+        return self._get("/search/keyword", {"query": query})
 
     def get_movie_credits(self, tmdb_id: int) -> dict[str, Any]:
         return self._get(f"/movie/{int(tmdb_id)}/credits")

@@ -5,6 +5,7 @@ import type { GraphConnection, GraphMovie, Neighborhood } from "@/types/graph";
 import {
   chipLayout,
   chipText,
+  chipTooltip,
   connectionsOf,
   createMap,
   edgeId,
@@ -31,6 +32,7 @@ function neighborhood(center: number, neighbors: [number, number, GraphConnectio
     nodes: [movie(center), ...neighbors.map(([id]) => movie(id))],
     edges: neighbors.map(([id, strength, type]) => connection(center, id, strength, type)),
     degraded: false,
+    saga: null,
   };
 }
 
@@ -100,14 +102,17 @@ describe("createMap", () => {
 describe("zones", () => {
   // Mixed types on purpose: the API returns them sorted by strength, not by type.
   const mixed = neighborhood(1, [
-    [2, 1, "DIRECTOR"],
+    [2, 0.92, "DIRECTOR"],
     [3, 0.9, "ACTOR"],
     [4, 0.8, "SIMILAR"],
-    [5, 1, "DIRECTOR"],
+    [5, 1, "SAGA"],
     [6, 0.6, "GENRE"],
-    [7, 0.9, "ACTOR"],
+    [7, 0.95, "UNIVERSE"],
     [8, 0.8, "SIMILAR"],
     [9, 0.35, "GENRE"],
+    [10, 1, "SAGA"],
+    [11, 0.92, "DIRECTOR"],
+    [12, 0.9, "ACTOR"],
   ]);
   const typeOf = (id: string) => mixed.edges.find((e) => String(e.target) === id)!.type;
 
@@ -125,7 +130,7 @@ describe("zones", () => {
         .sort((a, b) => a.angle - b.angle)
         .map((n) => n.type);
       const runs = around.filter((type, i) => i === 0 || type !== around[i - 1]);
-      expect(runs).toEqual(["DIRECTOR", "ACTOR", "SIMILAR", "GENRE"]);
+      expect(runs).toEqual(["SAGA", "UNIVERSE", "DIRECTOR", "ACTOR", "SIMILAR", "GENRE"]);
     });
   }
 });
@@ -246,12 +251,14 @@ describe("helpers", () => {
     expect(connectionsOf(2, edges).map((c) => c.source)).toEqual([1]);
   });
 
-  it("chipText shows the main short reason and how many more", () => {
-    const one = connection(1, 2, 1, "DIRECTOR");
-    one.reasons = [{ type: "DIRECTOR", label: "Dirigidas por Mike Newell", short: "Mike Newell" }];
-    expect(chipText(one)).toBe("Mike Newell");
+  it("chips show only the main short reason; the tooltip has every reason in full", () => {
+    const edge = connection(1, 2, 1, "ACTOR");
+    edge.reasons = [
+      { type: "ACTOR", label: "Ambas con Michael Gambon", short: "Michael Gambon" },
+      { type: "GENRE", label: "Comparten Fantasía", short: "Fantasía" },
+    ];
 
-    one.reasons.push({ type: "GENRE", label: "Comparten Fantasía", short: "Fantasía" });
-    expect(chipText(one)).toBe("Mike Newell +1");
+    expect(chipText(edge)).toBe("Michael Gambon");
+    expect(chipTooltip(edge)).toBe("Ambas con Michael Gambon · Comparten Fantasía");
   });
 });

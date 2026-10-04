@@ -52,4 +52,6 @@ def serialize_neighborhood(result: Neighborhood) -> dict:
             for c in result.connections
         ],
         "degraded": result.degraded,
+        # The center's saga ("Ver saga completa (8)"); null when it has none.
+        "saga": {"name": result.saga.name, "total": result.saga.total} if result.saga else None,
     }

@@ -1,12 +1,14 @@
 import { BaseEdge, EdgeLabelRenderer, getStraightPath, type EdgeProps } from "@xyflow/react";
 import { memo } from "react";
 
+import { Tooltip } from "@/components/ui/Tooltip";
+
 import { CONNECTION_STYLES, strokeWidth } from "../connectionStyles";
-import { chipText, type ConnectionEdge as ConnectionEdgeType } from "../graph";
+import { chipText, chipTooltip, type ConnectionEdge as ConnectionEdgeType } from "../graph";
 import { useUniverse } from "../UniverseContext";
 
 function ConnectionEdgeView({ id, sourceX, sourceY, targetX, targetY, data }: EdgeProps<ConnectionEdgeType>) {
-  const { hoveredEdgeId, spotlightId, chips } = useUniverse();
+  const { hoveredEdgeId, spotlightId, chips, hoverEdge } = useUniverse();
   if (!data) return null;
   const { connection } = data;
   const style = CONNECTION_STYLES[connection.type];
@@ -16,9 +18,10 @@ function ConnectionEdgeView({ id, sourceX, sourceY, targetX, targetY, data }: Ed
   const hovered = hoveredEdgeId === id;
   const lit = spotlightId !== null && (connection.source === spotlightId || connection.target === spotlightId);
   const opacity = hovered || lit ? 1 : spotlightId !== null ? 0.08 : 0.6;
-  // With a movie in the spotlight only its chips show; otherwise those that fit without overlapping.
+  // With a movie in the spotlight only its chips show; always only those that fit without
+  // covering a poster or another chip (the rest shows when its own line is hovered).
   const chip = chips.get(id);
-  const showChip = chip !== undefined && (hovered || lit || (spotlightId === null && chip.fits));
+  const showChip = chip !== undefined && (hovered || (chip.fits && (lit || spotlightId === null)));
 
   return (
     <>
@@ -39,15 +42,27 @@ function ConnectionEdgeView({ id, sourceX, sourceY, targetX, targetY, data }: Ed
       />
       {showChip && (
         <EdgeLabelRenderer>
+          {/* The chip names the reason; its tooltip (and the side panel) has every reason in full. */}
           <div
-            data-testid="edge-chip"
-            className={`pointer-events-none absolute flex max-w-48 items-center gap-1.5 rounded-full border bg-deep/90 px-2.5 py-1.5 text-xs font-bold leading-none text-fg shadow-poster backdrop-blur-md transition-opacity duration-200 ${
-              hovered || lit ? "z-10 border-line-strong" : "border-line"
-            }`}
-            style={{ transform: `translate(-50%, -50%) translate(${chip.x}px, ${chip.y}px)` }}
+            className="nodrag nopan absolute"
+            style={{ transform: `translate(-50%, -50%) translate(${chip.x}px, ${chip.y}px)`, pointerEvents: "all", zIndex: hovered || lit ? 10 : undefined }}
+            onMouseEnter={() => hoverEdge(id)}
+            onMouseLeave={() => hoverEdge(null)}
           >
-            <Icon aria-hidden className={`size-3.5 shrink-0 ${style.text}`} />
-            <span className="truncate">{chipText(connection)}</span>
+            <Tooltip text={chipTooltip(connection)}>
+              {(tooltipId) => (
+                <span
+                  data-testid="edge-chip"
+                  aria-describedby={tooltipId}
+                  className={`flex items-center gap-1.5 whitespace-nowrap rounded-full border bg-deep/90 px-2.5 py-1.5 text-xs font-bold leading-none text-fg shadow-poster backdrop-blur-md ${
+                    hovered || lit ? "border-line-strong" : "border-line"
+                  }`}
+                >
+                  <Icon aria-hidden className={`size-3.5 shrink-0 ${style.text}`} />
+                  {chipText(connection)}
+                </span>
+              )}
+            </Tooltip>
           </div>
         </EdgeLabelRenderer>
       )}

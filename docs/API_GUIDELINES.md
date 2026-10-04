@@ -183,6 +183,7 @@ Siempre del usuario autenticado. Toda la lógica vive en `RecommendationService`
 
 ```text
 GET /graph/movies/{id}?limit=12
+GET /graph/movies/{id}/saga
 ```
 
 Vecindario de una película en el mapa cinematográfico, armado por `GraphService` (sin base de grafos). `limit` es opcional, de 1 a 12 (12 por defecto); fuera de rango → `400 VALIDATION_ERROR`. Id inexistente → `404 MOVIE_NOT_FOUND`. Requiere JWT y usa el throttle `tmdb`.
@@ -209,15 +210,17 @@ Vecindario de una película en el mapa cinematográfico, armado por `GraphServic
       "strength": 1.0
     }
   ],
-  "degraded": false
+  "degraded": false,
+  "saga": null
 }
 ```
 
 - `nodes`: el centro primero y después cada vecino una sola vez. `score` es la nota de TMDB (`null` sin votos). `overview` viene recortado a ~280 caracteres.
 - `edges`: una por vecino, siempre desde `center`. Si una película se conecta por varios motivos, va **una sola arista** que los combina: `type` es el más fuerte, `types` y `reasons` los listan todos y `label` los une con " · ". Cada motivo trae `short`, la versión corta para el chip del mapa: la persona (el primer director o actor compartido), `"Similar"` o el primer género compartido.
-- Tipos y `strength`: `DIRECTOR` 1,00 (mismo director) · `ACTOR` 0,90 (comparten uno de los 5 actores principales, y también es principal en la otra) · `SIMILAR` 0,80 (TMDB *recommendations* / *similar*) · `GENRE` 0,60 con 2 o más géneros compartidos, 0,35 con uno. Cada motivo extra suma 0,05 (máximo 1,0).
+- Tipos y `strength`: `SAGA` 1,00 (misma colección de TMDB) · `UNIVERSE` 0,95 (mismo universo compartido, ver `docs/GRAPH_SPEC.md`) · `DIRECTOR` 0,92 (mismo director) · `ACTOR` 0,90 (comparten uno de los 5 actores principales, y también es principal en la otra) · `SIMILAR` 0,80 (TMDB *recommendations* / *similar*) · `GENRE` 0,60 con 2 o más géneros compartidos, 0,35 con uno. Cada motivo extra suma 0,05 (máximo 0,99: sólo una saga llega a 1,00).
 - Orden: `strength` y, a igual fuerza, mejor nota ponderada.
-- Diversidad: ningún tipo ocupa más de la mitad de las aristas, las que sólo comparten género no pasan de un tercio y una misma persona aporta como mucho 4 películas. Los topes sólo se relajan para llegar a 8 aristas.
+- Diversidad: ningún tipo ocupa más de la mitad de las aristas, las que sólo comparten género no pasan de un tercio y una misma persona aporta como mucho 4 películas. Los topes sólo se relajan para llegar a 8 aristas. Además, como máximo 3 películas de una misma saga y 4 entre `SAGA` y `UNIVERSE`; estos dos topes no se relajan.
+- `saga`: la saga del centro, `{"name": "Harry Potter", "total": 8}` (películas estrenadas, el centro incluido) o `null`. Si en el mapa faltan películas, `GET /graph/movies/{id}/saga` devuelve el mismo formato con **todas** las estrenadas como aristas `SAGA` desde el centro, en orden de estreno (404 `SAGA_NOT_FOUND` si la película no es de una saga).
 - `degraded: true` → TMDB falló sin caché para alguna fuente: se responde 200 con lo que haya.
 
 # Interactions

@@ -1,6 +1,8 @@
 """GraphService: the cinematic map's neighborhoods, built on demand (no graph database).
 
 For a center movie it gathers verifiable connections (docs/GRAPH_SPEC.md):
+- SAGA: the other movies of its TMDB collection (`belongs_to_collection`);
+- UNIVERSE: movies of the same shared universe (apps/graph/universes.py), not of its saga;
 - DIRECTOR: other movies directed by any of its directors (TMDB filmography + local credits);
 - ACTOR: other movies where one of its 5 lead actors is also a lead (top 5 billing);
 - SIMILAR: TMDB "recommendations" and "similar" of the center;
@@ -8,7 +10,8 @@ For a center movie it gathers verifiable connections (docs/GRAPH_SPEC.md):
 
 Then: strength per type → merge all types per movie into one edge → order → diversity
 (no type above half of the edges, genre-only edges up to a third, at most 4 movies through
-the same person; relaxed only to reach 8 edges) → top `limit`.
+the same person; relaxed only to reach 8 edges; at most 3 movies of one saga and 4 of
+saga + universe together, never relaxed) → top `limit`.
 
 TMDB lists (filmographies, similar) go through `MovieService.cached_lists`, so expanding a
 known node does not call TMDB again; if TMDB fails, whatever is cached or local is
@@ -16,22 +19,27 @@ returned and the response says `degraded`.
 """
 
 import math
+import re
 from dataclasses import dataclass, field
 from datetime import date
 
 from django.db.models import Count, Q
 
-from apps.movies.exceptions import CatalogRateLimited, CatalogUnavailable
+from apps.movies.exceptions import CatalogRateLimited, CatalogUnavailable, MovieNotFound
 from apps.movies.models import Movie, MoviePerson
 from apps.movies.services.movie_service import MovieService, TMDBFetch
 from apps.recommendations.services.scoring import quality
 
+from .universes import Universe, universes_of
+
+SAGA, UNIVERSE = "SAGA", "UNIVERSE"
 DIRECTOR, ACTOR, SIMILAR, GENRE = "DIRECTOR", "ACTOR", "SIMILAR", "GENRE"
-TYPE_ORDER = [DIRECTOR, ACTOR, SIMILAR, GENRE]  # tie-break when strengths are equal
-STRENGTH = {DIRECTOR: 1.00, ACTOR: 0.90, SIMILAR: 0.80}
+TYPE_ORDER = [SAGA, UNIVERSE, DIRECTOR, ACTOR, SIMILAR, GENRE]  # tie-break on equal strength
+STRENGTH = {SAGA: 1.00, UNIVERSE: 0.95, DIRECTOR: 0.92, ACTOR: 0.90, SIMILAR: 0.80}
 GENRE_STRENGTH_MULTI = 0.60  # 2+ shared genres
 GENRE_STRENGTH_ONE = 0.35
-COMBINED_BONUS = 0.05  # per extra connection type on the same edge (capped at 1.0)
+COMBINED_BONUS = 0.05  # per extra connection type on the same edge…
+COMBINED_CAP = 0.99  # …but only a saga reaches 1.00
 
 LEAD_ACTORS = 5  # "actor principal": top 5 billing, in both movies
 PERSON_MOVIES = 20  # most voted titles kept per filmography
@@ -46,6 +54,8 @@ MAX_TYPE_SHARE = 0.5  # no connection type takes more than half of the edges
 MAX_GENRE_ONLY_SHARE = 1 / 3
 MAX_PER_PERSON = 4
 MIN_RESULTS = 8  # caps are relaxed only to reach this many edges ("top 8–12")
+MAX_PER_SAGA = 3  # hard caps: the rest of a saga is one click away ("Ver saga completa")
+MAX_FRANCHISE = 4  # saga + universe together, leaving room for discoveries
 
 
 @dataclass
@@ -55,10 +65,16 @@ class Connection:
     actors: dict[int, str] = field(default_factory=dict)
     similar: bool = False
     shared_genres: list[str] = field(default_factory=list)
+    saga: str = ""  # clean saga name ("Harry Potter")
+    universe: str = ""  # universe name ("Universo Marvel")
 
     def reasons(self) -> list[tuple[str, float, str, str]]:
         """(type, strength, readable label, short label for the map's chip), strongest first."""
         found = []
+        if self.saga:
+            found.append((SAGA, STRENGTH[SAGA], f"De la saga {self.saga}", f"Saga {self.saga}"))
+        elif self.universe:  # same saga already says it
+            found.append((UNIVERSE, STRENGTH[UNIVERSE], f"Del {self.universe}", self.universe))
         if self.directors:
             names = list(self.directors.values())
             found.append((DIRECTOR, STRENGTH[DIRECTOR], "Dirigidas por " + _join(names), names[0]))
@@ -79,7 +95,8 @@ class Connection:
         reasons = self.reasons()
         if not reasons:
             return 0.0
-        return min(1.0, reasons[0][1] + COMBINED_BONUS * (len(reasons) - 1))
+        cap = 1.0 if reasons[0][0] == SAGA else COMBINED_CAP
+        return min(cap, reasons[0][1] + COMBINED_BONUS * (len(reasons) - 1))
 
     @property
     def primary_type(self) -> str:
@@ -96,10 +113,24 @@ class Connection:
 
 
 @dataclass(frozen=True)
+class Saga:
+    name: str
+    total: int  # released movies of the saga, the center included
+
+
+@dataclass(frozen=True)
 class Neighborhood:
     center: Movie
     connections: list[Connection]
     degraded: bool
+    saga: Saga | None = None
+
+
+def saga_name(collection_name: str) -> str:
+    """'Harry Potter - Colección' / 'Iron Man Collection' → 'Harry Potter' / 'Iron Man'."""
+    name = re.sub(r"\s*[-–:]?\s*\b(colecci[oó]n|collection)\s*$", "", collection_name, flags=re.I)
+    name = re.sub(r"^(colecci[oó]n|saga)\s+(de\s+)?", "", name, flags=re.I)
+    return name.strip() or collection_name.strip()
 
 
 def _join(names) -> str:
@@ -131,6 +162,12 @@ class GraphService:
             calls[f"person:{person.tmdb_id}:directed"] = _filmography(person.tmdb_id, directed=True)
         for person in leads:
             calls[f"person:{person.tmdb_id}:lead"] = _filmography(person.tmdb_id, directed=False)
+        saga_key = _saga_key(center.collection_tmdb_id) if center.collection_tmdb_id else None
+        if saga_key:
+            calls[saga_key] = _collection(center.collection_tmdb_id)
+        universes = universes_of(center)
+        for universe in universes:
+            calls.update(_universe_calls(universe))
         cached = self.movies.cached_lists(calls)
         degraded = degraded or bool(cached.failed)
 
@@ -148,6 +185,20 @@ class GraphService:
         for kind in ("recommendations", "similar"):
             for movie in cached.lists.get(f"{kind}:{center.tmdb_id}", []):
                 connect(movie).similar = True
+        saga = None
+        if saga_key:
+            parts = [m for m in cached.lists.get(saga_key, []) if m.pk != center.pk]
+            name = saga_name(center.collection_name)
+            for movie in parts:
+                connect(movie).saga = name
+            self._remember_saga(center, parts)
+            released = [m for m in parts if _released(m)]
+            saga = Saga(name=name, total=len(released) + 1) if released else None
+        for universe in universes:
+            for key in _universe_calls(universe):
+                for movie in cached.lists.get(key, []):
+                    if movie.pk != center.pk:
+                        connect(movie).universe = connect(movie).universe or universe.name
         self._local_people(center, directors, leads, connect)
         for movie in self._genre_pool(center):
             connect(movie)
@@ -167,7 +218,37 @@ class GraphService:
                 c.movie.pk,
             )
         )
-        return Neighborhood(center=center, connections=select(candidates, limit), degraded=degraded)
+        return Neighborhood(
+            center=center, connections=select(candidates, limit), degraded=degraded, saga=saga
+        )
+
+    def saga(self, movie_id: int) -> Neighborhood:
+        """Every released movie of the center's saga ("Ver saga completa"), oldest first."""
+        center = self.movies.get_details(movie_id)
+        if not center.collection_tmdb_id:
+            raise SagaNotFound()
+        key = _saga_key(center.collection_tmdb_id)
+        cached = self.movies.cached_lists({key: _collection(center.collection_tmdb_id)})
+        name = saga_name(center.collection_name)
+        center_genres = {g.pk: g.name for g in center.genres.all()}
+        parts = [m for m in cached.lists.get(key, []) if m.pk != center.pk and _released(m)]
+        self._remember_saga(center, parts)
+        connections = [
+            Connection(
+                movie,
+                saga=name,
+                shared_genres=sorted(
+                    center_genres[g.pk] for g in movie.genres.all() if g.pk in center_genres
+                ),
+            )
+            for movie in sorted(parts, key=lambda m: (m.release_date, m.pk))
+        ]
+        return Neighborhood(
+            center=center,
+            connections=connections,
+            degraded=bool(cached.failed),
+            saga=Saga(name=name, total=len(parts) + 1),
+        )
 
     # ------------------------------------------------------------ sources
 
@@ -196,6 +277,13 @@ class GraphService:
             people[row.person_id] = row.person.name
 
     @staticmethod
+    def _remember_saga(center: Movie, parts: list[Movie]) -> None:
+        """Keep the saga in the cache of its movies too (summaries arrive without it)."""
+        Movie.objects.filter(pk__in=[m.pk for m in parts], collection_tmdb_id__isnull=True).update(
+            collection_tmdb_id=center.collection_tmdb_id, collection_name=center.collection_name
+        )
+
+    @staticmethod
     def _genre_pool(center: Movie):
         genre_ids = [g.pk for g in center.genres.all()]
         if not genre_ids:
@@ -213,11 +301,46 @@ class GraphService:
         movie = connection.movie
         if movie.pk == center.pk or movie.vote_count < MIN_VOTES or not connection.reasons():
             return False
-        if movie.release_date is None or movie.release_date > date.today():
-            return False  # announced projects in filmographies
+        if not _released(movie):
+            return False  # announced projects in filmographies and sagas
         genres = {g.tmdb_id for g in movie.genres.all()}
         center_is_tv = any(g.tmdb_id == TV_MOVIE_TMDB_GENRE for g in center.genres.all())
         return center_is_tv or TV_MOVIE_TMDB_GENRE not in genres
+
+
+class SagaNotFound(MovieNotFound):
+    default_code = "SAGA_NOT_FOUND"
+    default_detail = "Esta película no es parte de una saga."
+
+
+def _released(movie: Movie) -> bool:
+    return movie.release_date is not None and movie.release_date <= date.today()
+
+
+def _saga_key(collection_tmdb_id: int) -> str:
+    return f"collection:{collection_tmdb_id}"
+
+
+def _collection(collection_tmdb_id: int) -> TMDBFetch:
+    """A TMDB collection's movies (`parts`) as a cacheable list."""
+
+    def fetch(client):
+        return {"results": client.get_collection(collection_tmdb_id).get("parts") or []}
+
+    return fetch
+
+
+def _universe_calls(universe: Universe) -> dict[str, TMDBFetch]:
+    """The lists that make up a universe: its keywords' most voted movies and its sagas."""
+    calls: dict[str, TMDBFetch] = {}
+    if universe.keywords:
+        keywords = "|".join(str(k) for k in universe.keywords)  # any of them
+        calls[f"keywords:{keywords}"] = lambda c, k=keywords: c.discover_movies(
+            {"with_keywords": k, "sort_by": "vote_count.desc"}
+        )
+    for collection in universe.collections:
+        calls[_saga_key(collection)] = _collection(collection)
+    return calls
 
 
 def _filmography(person_tmdb_id: int, *, directed: bool) -> TMDBFetch:
@@ -249,10 +372,21 @@ def select(ordered: list[Connection], limit: int) -> list[Connection]:
     deferred: list[Connection] = []
     per_type: dict[str, int] = {}
     per_person: dict[int, int] = {}
+    per_saga: dict[str, int] = {}
+    franchise = 0
     for connection in ordered:
         if len(picked) == limit:
             break
         kind = connection.primary_type
+        if kind in (SAGA, UNIVERSE):
+            # Hard caps (never relaxed): a saga can't fill the map.
+            if franchise >= MAX_FRANCHISE or (
+                kind == SAGA and per_saga.get(connection.saga, 0) >= MAX_PER_SAGA
+            ):
+                continue
+            franchise += 1
+            if kind == SAGA:
+                per_saga[connection.saga] = per_saga.get(connection.saga, 0) + 1
         type_cap = max_genre_only if kind == GENRE else max_per_type
         if per_type.get(kind, 0) >= type_cap or any(
             per_person.get(p, 0) >= MAX_PER_PERSON for p in connection.people

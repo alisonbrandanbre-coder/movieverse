@@ -46,6 +46,12 @@ class Movie(models.Model):
     vote_average = models.FloatField(default=0)
     vote_count = models.PositiveIntegerField(default=0)
 
+    # Saga (TMDB `belongs_to_collection`) and keywords (shared universes, see
+    # apps/graph/universes.py). Filled with the full details; summaries leave them empty.
+    collection_tmdb_id = models.PositiveIntegerField(null=True, blank=True, db_index=True)
+    collection_name = models.CharField(max_length=255, blank=True)
+    keyword_ids = models.JSONField(default=list, blank=True)
+
     genres = models.ManyToManyField(Genre, related_name="movies", blank=True)
     people = models.ManyToManyField(Person, through="MoviePerson", related_name="movies")
 

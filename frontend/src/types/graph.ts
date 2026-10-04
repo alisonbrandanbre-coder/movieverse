@@ -1,4 +1,4 @@
-export type ConnectionType = "DIRECTOR" | "ACTOR" | "SIMILAR" | "GENRE";
+export type ConnectionType = "SAGA" | "UNIVERSE" | "DIRECTOR" | "ACTOR" | "SIMILAR" | "GENRE";
 
 export interface GraphMovie {
   id: number;
@@ -26,8 +26,14 @@ export interface GraphConnection {
   types: ConnectionType[];
   label: string;
   reasons: ConnectionReason[];
-  /** 0–1: director 1.00, lead actor 0.90, TMDB similar 0.80, genres 0.60 / 0.35. */
+  /** 0–1: saga 1.00, universe 0.95, director 0.92, lead actor 0.90, similar 0.80, genres 0.60 / 0.35. */
   strength: number;
+}
+
+/** The center's saga: how many released movies it has, the center included. */
+export interface SagaInfo {
+  name: string;
+  total: number;
 }
 
 export interface Neighborhood {
@@ -35,4 +41,5 @@ export interface Neighborhood {
   nodes: GraphMovie[];
   edges: GraphConnection[];
   degraded: boolean;
+  saga: SagaInfo | null;
 }

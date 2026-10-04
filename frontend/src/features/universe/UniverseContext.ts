@@ -17,6 +17,7 @@ export interface UniverseContextValue {
   chips: Map<string, ChipSpot>;
   select: (movieId: number) => void;
   hoverNode: (movieId: number | null) => void;
+  hoverEdge: (edgeId: string | null) => void;
 }
 
 export const UniverseContext = createContext<UniverseContextValue | null>(null);

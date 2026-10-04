@@ -276,7 +276,7 @@ def test_strengths_by_type(auth_client, interstellar, tmdb, genres):
 
     edges = edges_by_title(auth_client.get(url(interstellar.pk)).json())
 
-    assert edges["Memento"]["strength"] == 1.0  # director only
+    assert edges["Memento"]["strength"] == 0.92  # director only
     assert edges["Dallas Buyers Club"]["strength"] == pytest.approx(0.95)  # actor + 1 genre
     assert edges["Gravity"]["strength"] == pytest.approx(0.85)  # similar + 1 genre
     assert edges["Solo dos géneros"]["strength"] == 0.6

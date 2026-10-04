@@ -1,4 +1,4 @@
-import { Clapperboard, Drama, Sparkles, Tag, type LucideIcon } from "lucide-react";
+import { Atom, Clapperboard, Drama, Library, Sparkles, Tag, type LucideIcon } from "lucide-react";
 
 import type { ConnectionType } from "@/types/graph";
 
@@ -17,10 +17,28 @@ interface ConnectionStyle {
 }
 
 /**
- * Director gold, solid and thickest · actor sky blue, solid · similar violet, dotted ·
- * genre blue-gray, dashed and thinnest. The legend draws the same strokes.
+ * Saga coral, solid and thickest · universe mint, long dashes · director gold, solid ·
+ * actor sky blue, solid · similar violet, dotted · genre blue-gray, dashed and thinnest.
+ * Each type also has its icon (chips, legend, panel). The legend draws the same strokes.
  */
 export const CONNECTION_STYLES: Record<ConnectionType, ConnectionStyle> = {
+  SAGA: {
+    label: "Saga",
+    icon: Library,
+    color: "var(--color-coral)",
+    text: "text-coral",
+    width: { base: 3, strength: 1.5 },
+    lineCap: "round",
+  },
+  UNIVERSE: {
+    label: "Universo",
+    icon: Atom,
+    color: "var(--color-mint)",
+    text: "text-mint",
+    width: { base: 2.5, strength: 1.25 },
+    dash: "12 5",
+    lineCap: "round",
+  },
   DIRECTOR: {
     label: "Director",
     icon: Clapperboard,
@@ -58,7 +76,7 @@ export const CONNECTION_STYLES: Record<ConnectionType, ConnectionStyle> = {
 };
 
 /** Legend order, and the order of the "zones" around the first ring. */
-export const CONNECTION_ORDER: ConnectionType[] = ["DIRECTOR", "ACTOR", "SIMILAR", "GENRE"];
+export const CONNECTION_ORDER: ConnectionType[] = ["SAGA", "UNIVERSE", "DIRECTOR", "ACTOR", "SIMILAR", "GENRE"];
 
 export function strokeWidth(type: ConnectionType, strength: number): number {
   const { width } = CONNECTION_STYLES[type];
