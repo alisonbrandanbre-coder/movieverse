@@ -81,7 +81,75 @@ def normalize_movie_details(payload: dict[str, Any]) -> dict[str, Any]:
     fields["collection_tmdb_id"] = collection["id"] if has_collection else None
     fields["collection_name"] = _text(collection.get("name"), 255) if has_collection else ""
     fields["keyword_ids"] = keyword_ids(payload)
+    fields["origin_countries"] = origin_countries(payload)
     return fields
+
+
+def origin_countries(payload: dict[str, Any]) -> list[str]:
+    """`origin_country` (ISO codes) or, for older payloads, the production countries."""
+    codes = payload.get("origin_country")
+    if not isinstance(codes, list) or not codes:
+        codes = [
+            c.get("iso_3166_1")
+            for c in payload.get("production_countries") or []
+            if isinstance(c, dict)
+        ]
+    return list(dict.fromkeys(c.upper() for c in codes if isinstance(c, str) and len(c) == 2))
+
+
+def _providers(items: Any) -> list[dict[str, Any]]:
+    providers = [
+        {
+            "tmdb_id": p["provider_id"],
+            "name": _text(p.get("provider_name"), 100),
+            "logo_path": _text(p.get("logo_path"), 255),
+            "priority": _number(p.get("display_priority"), int, 999),
+        }
+        for p in items or []
+        if isinstance(p, dict) and isinstance(p.get("provider_id"), int) and p.get("provider_name")
+    ]
+    return sorted(providers, key=lambda p: p["priority"])
+
+
+def normalize_movie_watch_providers(payload: dict[str, Any], region: str) -> dict[str, Any]:
+    """A movie's `/watch/providers` for one region: {link, streaming, rent, buy}.
+    Streaming joins subscription, free and with-ads offers (without duplicates)."""
+    block = (payload.get("results") or {}).get(region)
+    if not isinstance(block, dict):
+        return {"link": "", "streaming": [], "rent": [], "buy": []}
+    streaming: dict[int, dict[str, Any]] = {}
+    for kind in ("flatrate", "free", "ads"):
+        for provider in _providers(block.get(kind)):
+            streaming.setdefault(provider["tmdb_id"], provider)
+    return {
+        "link": _text(block.get("link"), 500),
+        "streaming": sorted(streaming.values(), key=lambda p: p["priority"]),
+        "rent": _providers(block.get("rent")),
+        "buy": _providers(block.get("buy")),
+    }
+
+
+def normalize_watch_providers(payload: dict[str, Any], region: str) -> list[dict[str, Any]]:
+    """`/watch/providers/movie` → platforms of a region, by that region's priority."""
+    providers = []
+    for p in payload.get("results") or []:
+        if not (isinstance(p, dict) and isinstance(p.get("provider_id"), int)):
+            continue
+        priorities = p.get("display_priorities")
+        priority = priorities.get(region) if isinstance(priorities, dict) else None
+        providers.append(
+            {
+                "tmdb_id": p["provider_id"],
+                "name": _text(p.get("provider_name"), 100),
+                "logo_path": _text(p.get("logo_path"), 255),
+                "display_priority": _number(
+                    priority if priority is not None else p.get("display_priority"), int, 999
+                ),
+            }
+        )
+    return sorted(
+        (p for p in providers if p["name"]), key=lambda p: (p["display_priority"], p["name"])
+    )
 
 
 def keyword_ids(payload: dict[str, Any]) -> list[int]:

@@ -5,7 +5,9 @@ import {
   getMood,
   getMovie,
   getMovieCredits,
+  getMovieWatchProviders,
   getTrending,
+  getWatchProviders,
   movieKeys,
   SEARCH_MIN_LENGTH,
   searchMovies,
@@ -65,6 +67,24 @@ export function useMood(slug: string, page = 1) {
     queryKey: movieKeys.mood(slug, page),
     queryFn: ({ signal }) => getMood(slug, page, signal),
     placeholderData: keepPreviousData,
+    staleTime: 30 * 60_000,
+  });
+}
+
+/** Streaming platforms of the region (the backend caches them for days). */
+export function useWatchProviders() {
+  return useQuery({
+    queryKey: movieKeys.providers,
+    queryFn: ({ signal }) => getWatchProviders(signal),
+    staleTime: 60 * 60_000,
+  });
+}
+
+export function useMovieWatchProviders(id: number) {
+  return useQuery({
+    queryKey: movieKeys.watchProviders(id),
+    queryFn: ({ signal }) => getMovieWatchProviders(id, signal),
+    enabled: Number.isInteger(id) && id > 0,
     staleTime: 30 * 60_000,
   });
 }

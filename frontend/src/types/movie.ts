@@ -66,3 +66,20 @@ export interface MovieSearchPage {
   totalResults: number;
   results: MovieSummary[];
 }
+
+/** A streaming platform (TMDB watch provider) of the backend's region. */
+export interface WatchProvider {
+  tmdbId: number;
+  name: string;
+  logoUrl: string | null;
+}
+
+/** Where a movie can be watched in the region ("Dónde verla"). */
+export interface MovieWatchProviders {
+  region: string;
+  /** TMDB's page with the offers (data by JustWatch), or null. */
+  link: string | null;
+  streaming: WatchProvider[];
+  rent: WatchProvider[];
+  buy: WatchProvider[];
+}

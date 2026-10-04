@@ -190,8 +190,9 @@ Base `/api/v1`, autenticación JWT (`Authorization: Bearer …`). Los errores ti
 | GET | `/health` | Estado de la API y la base de datos (sin auth) |
 | POST | `/auth/register` · `/auth/login` · `/auth/refresh` · `/auth/logout` | Cuenta y sesión |
 | GET | `/auth/me` | Usuario autenticado |
-| GET | `/movies/search?q=&page=` | Búsqueda en TMDB (resultados cacheados localmente); acepta los filtros `genres`, `decade`, `rating`, `runtime` |
-| GET | `/movies/discover?genres=&decade=&rating=&runtime=&page=` | Catálogo filtrado sin texto (TMDB discover) |
+| GET | `/movies/search?q=&page=` | Búsqueda en TMDB (resultados cacheados localmente); acepta los mismos filtros que discover |
+| GET | `/movies/discover?genres=&providers=&decade=&rating=&runtime=&countries=&popularity=&sort=&hide_watched=&page=` | Catálogo filtrado sin texto (TMDB discover, caché de 12 h) |
+| GET | `/movies/providers` · `/movies/{id}/providers` | Plataformas de streaming de Argentina y "Dónde verla" de una película |
 | GET | `/movies/trending` | Tendencias de la semana (caché de 6 h) |
 | GET | `/movies/mood/{slug}?page=` | Películas para un estado de ánimo de la Home |
 | GET | `/movies/{id}` · `/movies/{id}/credits` | Ficha y créditos |

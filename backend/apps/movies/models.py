@@ -51,6 +51,11 @@ class Movie(models.Model):
     collection_tmdb_id = models.PositiveIntegerField(null=True, blank=True, db_index=True)
     collection_name = models.CharField(max_length=255, blank=True)
     keyword_ids = models.JSONField(default=list, blank=True)
+    # ISO 3166-1 codes of the countries of origin (details only; Buscar's country filter).
+    origin_countries = models.JSONField(default=list, blank=True)
+    # Where to watch it in TMDB_WATCH_REGION: {link, streaming, rent, buy}, each a list of
+    # {tmdb_id, name, logo_path}. Fetched on demand ("Dónde verla") and refreshed often.
+    watch_providers = models.JSONField(default=dict, blank=True)
 
     genres = models.ManyToManyField(Genre, related_name="movies", blank=True)
     people = models.ManyToManyField(Person, through="MoviePerson", related_name="movies")
@@ -58,6 +63,7 @@ class Movie(models.Model):
     # Cache bookkeeping: null means "only summary data from a search result".
     metadata_synced_at = models.DateTimeField(null=True, blank=True)
     credits_synced_at = models.DateTimeField(null=True, blank=True)
+    providers_synced_at = models.DateTimeField(null=True, blank=True)
 
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -85,10 +91,28 @@ class TMDBListCache(models.Model):
 
     key = models.CharField(max_length=255, unique=True)
     tmdb_ids = models.JSONField(default=list)
+    # Anything else of the payload worth keeping (discover: total_pages / total_results).
+    extra = models.JSONField(default=dict, blank=True)
     fetched_at = models.DateTimeField()
 
     def __str__(self) -> str:
         return f"{self.key} ({len(self.tmdb_ids)})"
+
+
+class WatchProvider(models.Model):
+    """A streaming platform of TMDB_WATCH_REGION (Buscar / Descubrir's "Dónde verla").
+    The ordered list itself is cached in `TMDBListCache` ("providers:<region>")."""
+
+    tmdb_id = models.PositiveIntegerField(unique=True)
+    name = models.CharField(max_length=100)
+    logo_path = models.CharField(max_length=255, blank=True)
+    display_priority = models.PositiveIntegerField(default=0)
+
+    class Meta:
+        ordering = ["display_priority", "name"]
+
+    def __str__(self) -> str:
+        return self.name
 
 
 class MoviePerson(models.Model):

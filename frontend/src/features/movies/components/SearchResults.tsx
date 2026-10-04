@@ -8,7 +8,7 @@ import { MovieGridSkeleton } from "@/components/ui/Skeleton";
 import { useRecommendations } from "@/features/recommendations/hooks";
 
 import { SEARCH_MIN_LENGTH } from "../api";
-import { hasFilters, NO_FILTERS, type MovieFilters } from "../filters";
+import { changesResults, hasFilters, NO_FILTERS, SORTS, type MovieFilters } from "../filters";
 import { useMovieSearch, useTrending } from "../hooks";
 import { FilteredMovies, NoMatches, ResultsGrid } from "./FilteredMovies";
 import { MovieCarousel } from "./MovieCarousel";
@@ -54,10 +54,11 @@ export function SearchResults({ query, page, onPageChange, filters = NO_FILTERS,
   const trimmed = query.trim();
   const hasText = trimmed.length >= SEARCH_MIN_LENGTH;
   const filtered = hasFilters(filters);
+  const sorted = filters.sort !== "relevance";
   const search = useMovieSearch(hasText ? trimmed : "", page, filters);
 
   if (!hasText) {
-    return filtered ? (
+    return changesResults(filters) ? (
       <FilteredMovies filters={filters} page={page} onPageChange={onPageChange} onClearFilters={onClearFilters} />
     ) : (
       <SearchSuggestions />
@@ -96,7 +97,7 @@ export function SearchResults({ query, page, onPageChange, filters = NO_FILTERS,
       stale={search.isPlaceholderData}
       page={page}
       onPageChange={onPageChange}
-      label={`${totalResults.toLocaleString("es")} ${totalResults === 1 ? "resultado" : "resultados"} para “${trimmed}”${filtered ? " con estos filtros" : ""}`}
+      label={`${totalResults.toLocaleString("es")} ${totalResults === 1 ? "resultado" : "resultados"} para “${trimmed}”${filtered ? " con estos filtros" : ""}${sorted ? ` · ${SORTS.find((s) => s.value === filters.sort)!.label.toLowerCase()}` : ""}`}
     />
   );
 }

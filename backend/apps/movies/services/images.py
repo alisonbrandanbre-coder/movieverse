@@ -5,6 +5,7 @@ from django.conf import settings
 POSTER_SIZE = "w500"
 BACKDROP_SIZE = "w1280"
 PROFILE_SIZE = "w185"
+LOGO_SIZE = "w92"  # streaming platform logos
 
 
 def build_image_url(path: str | None, size: str) -> str | None:
@@ -23,3 +24,7 @@ def backdrop_url(path: str | None) -> str | None:
 
 def profile_url(path: str | None) -> str | None:
     return build_image_url(path, PROFILE_SIZE)
+
+
+def logo_url(path: str | None) -> str | None:
+    return build_image_url(path, LOGO_SIZE)

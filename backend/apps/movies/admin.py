@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from .models import Genre, Movie, MoviePerson, Person
+from .models import Genre, Movie, MoviePerson, Person, WatchProvider
 
 
 class MoviePersonInline(admin.TabularInline):
@@ -28,4 +28,10 @@ class GenreAdmin(admin.ModelAdmin):
 @admin.register(Person)
 class PersonAdmin(admin.ModelAdmin):
     list_display = ["id", "name", "tmdb_id"]
+    search_fields = ["name"]
+
+
+@admin.register(WatchProvider)
+class WatchProviderAdmin(admin.ModelAdmin):
+    list_display = ["id", "name", "tmdb_id", "display_priority"]
     search_fields = ["name"]

@@ -141,6 +141,8 @@ TMDB_IMAGE_BASE_URL = env_str("TMDB_IMAGE_BASE_URL", "https://image.tmdb.org/t/p
 TMDB_LANGUAGE = env_str("TMDB_LANGUAGE", "es-ES")
 TMDB_TIMEOUT_SECONDS = env_int("TMDB_TIMEOUT_SECONDS", 5)
 TMDB_CACHE_DAYS = env_int("TMDB_CACHE_DAYS", 7)
+# Streaming platforms ("Dónde verla") are those of this region (ISO 3166-1).
+TMDB_WATCH_REGION = env_str("TMDB_WATCH_REGION", "AR")
 
 # ------------------------------------------------------------------
 # Logging

@@ -1,4 +1,7 @@
-"""Buscar / Descubrir filters: genres, decade, minimum rating and runtime.
+"""Buscar / Descubrir filters: genres, decade, minimum rating and runtime range.
+
+(Platforms, countries, popularity, sort, "Ocultar las que ya vi" and caching are in
+test_catalog_filters.py.)
 
 Without text → TMDB discover with the filters as params; with text → TMDB's search,
 filtered by the backend and paginated locally.
@@ -81,7 +84,7 @@ def test_discover_translates_filters_to_tmdb_params(auth_client, tmdb, genres):
             "genres": f"{genres['Ciencia ficción'].pk},{genres['Aventura'].pk}",
             "decade": 1990,
             "rating": 7,
-            "runtime": 90,
+            "runtime": "short",
             "page": 2,
         },
     )
@@ -93,7 +96,7 @@ def test_discover_translates_filters_to_tmdb_params(auth_client, tmdb, genres):
     assert params["primary_release_date.gte"] == "1990-01-01"
     assert params["primary_release_date.lte"] == "1999-12-31"
     assert params["vote_average.gte"] == 7
-    assert params["with_runtime.lte"] == 89
+    assert params["with_runtime.lte"] == 89  # "Cortas": less than 90 minutes
     assert params["with_runtime.gte"] == 1
     assert params["sort_by"] == "popularity.desc"
     body = response.json()
@@ -113,8 +116,15 @@ def test_discover_without_filters_is_popular_and_well_voted(auth_client, tmdb):
     assert not {"with_genres", "vote_average.gte", "with_runtime.lte"} & set(params)
 
 
-def test_two_hours_means_less_than_120_minutes():
-    assert MovieFilters(max_runtime=120).discover_params()["with_runtime.lte"] == 119
+@pytest.mark.parametrize(
+    ("runtime", "low", "high"),
+    [("short", 1, 89), ("normal", 90, 119), ("long", 120, 150), ("epic", 151, None)],
+)
+def test_runtime_ranges(runtime, low, high):
+    params = MovieFilters(runtime=runtime).discover_params()
+
+    assert params["with_runtime.gte"] == low
+    assert params.get("with_runtime.lte") == high
 
 
 @pytest.mark.parametrize(
@@ -126,6 +136,7 @@ def test_two_hours_means_less_than_120_minutes():
         {"decade": 1900},
         {"rating": 9},
         {"runtime": 100},
+        {"runtime": 90},  # the old "less than" values are gone
         {"page": 0},
     ],
 )
@@ -176,7 +187,7 @@ def test_search_filters_by_genres_decade_and_rating(auth_client, tmdb, genres):
 
 def test_search_runtime_filter_fetches_details_only_when_needed(auth_client, tmdb, genres):
     tmdb.search_movies.return_value = page(STAR_SEARCH)
-    runtimes = {1: 85, 5: 150, 3: 121}
+    runtimes = {1: 135, 5: 151, 3: 119}
 
     def details(tmdb_id):
         movie = next(r for r in STAR_SEARCH if r["id"] == tmdb_id)
@@ -190,21 +201,21 @@ def test_search_runtime_filter_fetches_details_only_when_needed(auth_client, tmd
 
     response = auth_client.get(
         SEARCH_URL,
-        {"q": "star", "genres": genres["Ciencia ficción"].pk, "rating": 7, "runtime": 120},
+        {"q": "star", "genres": genres["Ciencia ficción"].pk, "rating": 7, "runtime": "long"},
     )
 
     assert titles(response) == ["Star Odyssey"]
     # Only the 3 movies that passed genre + rating needed their runtime.
     fetched = sorted(call.args[0] for call in tmdb.get_movie_details.call_args_list)
     assert fetched == [1, 3, 5]
-    assert Movie.objects.get(tmdb_id=1).runtime == 85  # cached for next time
+    assert Movie.objects.get(tmdb_id=1).runtime == 135  # cached for next time
 
 
 def test_unknown_runtime_does_not_pass_a_runtime_filter(auth_client, tmdb, genres):
     tmdb.search_movies.return_value = page([STAR_SEARCH[0]])
     tmdb.get_movie_details.side_effect = TMDBUnavailable("down")
 
-    response = auth_client.get(SEARCH_URL, {"q": "star", "runtime": 90})
+    response = auth_client.get(SEARCH_URL, {"q": "star", "runtime": "short"})
 
     assert response.status_code == 200
     assert titles(response) == []

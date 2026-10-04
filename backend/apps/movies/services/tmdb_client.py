@@ -101,6 +101,14 @@ class TMDBClient:
         """Most voted movies of all time: the titles most people can rate (onboarding)."""
         return self.discover_movies({"sort_by": "vote_count.desc"}, page=page)
 
+    def get_watch_providers(self, region: str) -> dict[str, Any]:
+        """Streaming platforms available in a region, with `display_priorities` per region."""
+        return self._get("/watch/providers/movie", {"watch_region": region})
+
+    def get_movie_watch_providers(self, tmdb_id: int) -> dict[str, Any]:
+        """Where a movie can be watched: `results` by region ({link, flatrate, rent, buy…})."""
+        return self._get(f"/movie/{int(tmdb_id)}/watch/providers")
+
     def get_genres(self) -> list[dict[str, Any]]:
         return self._get("/genre/movie/list").get("genres", [])
 

@@ -8,7 +8,7 @@ import { Pagination } from "@/components/ui/Pagination";
 import { MovieGridSkeleton } from "@/components/ui/Skeleton";
 import type { MovieSearchPage } from "@/types/movie";
 
-import type { MovieFilters } from "../filters";
+import { hasFilters, type MovieFilters, type SortOrder } from "../filters";
 import { useMovieDiscover } from "../hooks";
 import { MovieGrid } from "./MovieGrid";
 
@@ -55,7 +55,15 @@ export function ResultsGrid({
   );
 }
 
-/** Movies matching the filters without a text (TMDB discover, most popular first). */
+const SORT_PHRASES: Record<SortOrder, string> = {
+  relevance: "por relevancia",
+  rating: "de mejor a peor puntaje",
+  newest: "de las más recientes a las más antiguas",
+  oldest: "de las más antiguas a las más recientes",
+  popular: "de las más populares a las menos",
+};
+
+/** Movies matching the filters (or in another order) without a text (TMDB discover). */
 export function FilteredMovies({ filters, page, onPageChange, onClearFilters }: ResultsProps & { filters: MovieFilters }) {
   const discover = useMovieDiscover(filters, page);
 
@@ -71,7 +79,7 @@ export function FilteredMovies({ filters, page, onPageChange, onClearFilters }: 
   }
   const { totalResults } = discover.data;
   if (discover.data.results.length === 0) {
-    return <NoMatches description="Probá con menos géneros u otra década." onClearFilters={onClearFilters} />;
+    return <NoMatches description="Probá sacando algún filtro: menos géneros o plataformas, otra duración o década." onClearFilters={onClearFilters} />;
   }
   return (
     <ResultsGrid
@@ -79,7 +87,7 @@ export function FilteredMovies({ filters, page, onPageChange, onClearFilters }: 
       stale={discover.isPlaceholderData}
       page={page}
       onPageChange={onPageChange}
-      label={`${totalResults.toLocaleString("es")} ${totalResults === 1 ? "película" : "películas"} con estos filtros, de las más populares a las menos`}
+      label={`${totalResults.toLocaleString("es")} ${totalResults === 1 ? "película" : "películas"}${hasFilters(filters) ? " con estos filtros" : ""}, ${SORT_PHRASES[filters.sort]}`}
     />
   );
 }

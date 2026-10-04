@@ -12,7 +12,7 @@ import { ErrorState } from "@/components/ui/ErrorState";
 import { MovieGridSkeleton } from "@/components/ui/Skeleton";
 import { FilteredMovies } from "@/features/movies/components/FilteredMovies";
 import { MovieFilterPanel } from "@/features/movies/components/MovieFilterPanel";
-import { hasFilters } from "@/features/movies/filters";
+import { changesResults } from "@/features/movies/filters";
 import { useFilterParams } from "@/features/movies/useFilterParams";
 import { RecommendationSection } from "@/features/recommendations/components/RecommendationSection";
 import { SurpriseButton } from "@/features/recommendations/components/Surprise";
@@ -41,8 +41,9 @@ const SECTIONS: Record<RecommendationSectionKey, { title: string; description: s
 };
 
 /**
- * Descubrir: the user's recommendations in three sections. With filters (in the URL), the
- * catalog matching them (TMDB discover) replaces the sections until they are cleared.
+ * Descubrir: the user's recommendations in three sections. With filters or another order
+ * (in the URL), the catalog matching them (TMDB discover) replaces the sections until they
+ * are cleared.
  */
 export function DiscoverPage() {
   const recommendations = useRecommendations();
@@ -75,7 +76,7 @@ export function DiscoverPage() {
 
   const filterPanel = <MovieFilterPanel filters={filters} onChange={setFilters} />;
 
-  if (hasFilters(filters)) {
+  if (changesResults(filters)) {
     return (
       <PageContainer className="flex flex-col gap-8">
         {header}

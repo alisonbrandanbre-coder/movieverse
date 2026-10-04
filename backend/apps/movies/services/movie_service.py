@@ -4,8 +4,12 @@ Cache policy (docs/SPRINT_1_REPORT.md → "Persistencia"):
 - Search results are upserted as *summary* rows (no runtime, no credits).
 - Full metadata and credits are fetched on first access and refreshed only when older
   than `TMDB_CACHE_DAYS`. If TMDB fails while refreshing, cached data is served.
+- Discover pages (Buscar / Descubrir without text) are cached `DISCOVER_MAX_AGE`, the
+  region's streaming platforms `TMDB_CACHE_DAYS` and each movie's "Dónde verla"
+  `PROVIDERS_MAX_AGE`; all of them in `TMDBListCache` / `Movie` (no Redis in the MVP).
 """
 
+import hashlib
 import logging
 import math
 from collections.abc import Callable
@@ -20,8 +24,8 @@ from django.db.models import Count, Q
 from django.utils import timezone
 
 from ..exceptions import CatalogRateLimited, CatalogUnavailable, MoodNotFound, MovieNotFound
-from ..filters import MovieFilters
-from ..models import Genre, Movie, MoviePerson, Person, TMDBListCache
+from ..filters import RELEVANCE, MovieFilters
+from ..models import Genre, Movie, MoviePerson, Person, TMDBListCache, WatchProvider
 from ..moods import BASE_PARAMS, MOODS
 from .normalizers import (
     PersonCredit,
@@ -30,6 +34,8 @@ from .normalizers import (
     normalize_genres,
     normalize_movie,
     normalize_movie_details,
+    normalize_movie_watch_providers,
+    normalize_watch_providers,
 )
 from .tmdb_client import TMDBClient, TMDBError, TMDBNotFound, TMDBRateLimited
 
@@ -53,6 +59,20 @@ MOOD_MAX_PAGE = 5
 FILTERED_SEARCH_TMDB_PAGES = 3
 FILTERED_PAGE_SIZE = 20
 TMDB_MAX_PAGE = 500
+# Discover results follow TMDB's popularity, which moves during the day.
+DISCOVER_MAX_AGE = timedelta(hours=12)
+# Streaming catalogs change often: a movie's platforms are asked again after 2 days.
+PROVIDERS_MAX_AGE = timedelta(days=2)
+# Platforms offered by the filter. TMDB's regional priority mixes rent/buy stores and niche
+# services (in AR, HBO Max comes 35th), so the main streaming services are curated per region
+# (TMDB ids, in display order; names and logos still come from TMDB, and one TMDB no longer
+# lists is skipped). Other regions get their first PROVIDER_LIST_SIZE by priority.
+FEATURED_PROVIDERS: dict[str, list[int]] = {
+    # Netflix, Prime Video, Disney+, HBO Max, Apple TV, Paramount+, Mercado Play, MUBI,
+    # Crunchyroll, CINE.AR, Pluto TV, Claro video.
+    "AR": [8, 119, 337, 1899, 350, 531, 2302, 11, 283, 491, 300, 167],
+}
+PROVIDER_LIST_SIZE = 12
 
 TMDBFetch = Callable[[TMDBClient], dict[str, Any]]
 # Values that change often in TMDB and are refreshed on every search hit.
@@ -101,10 +121,17 @@ class MovieService:
     # ------------------------------------------------------------ search
 
     def search(
-        self, query: str, page: int = 1, filters: MovieFilters | None = None
+        self,
+        query: str,
+        page: int = 1,
+        filters: MovieFilters | None = None,
+        exclude_ids: set[int] | frozenset[int] = frozenset(),
     ) -> SearchResult:
-        if filters is not None and filters.active:
-            return self._filtered_search(query, page, filters)
+        """TMDB's search. With filters, another order or movies to hide (the ones the user
+        watched), its first pages are filtered and sorted here."""
+        filters = filters or MovieFilters()
+        if filters.active or filters.sort != RELEVANCE or exclude_ids:
+            return self._filtered_search(query, page, filters, exclude_ids)
         try:
             payload = self.client.search_movies(query, page=page)
         except TMDBError as exc:
@@ -120,11 +147,14 @@ class MovieService:
             movies=movies,
         )
 
-    def _filtered_search(self, query: str, page: int, filters: MovieFilters) -> SearchResult:
-        """The first TMDB search pages, filtered here and paginated locally.
+    def _filtered_search(
+        self, query: str, page: int, filters: MovieFilters, exclude_ids: set[int] | frozenset[int]
+    ) -> SearchResult:
+        """The first TMDB search pages, filtered and sorted here and paginated locally.
 
-        A runtime filter needs each candidate's details (search results have no runtime);
-        they are fetched in parallel once and cached like any other detail.
+        Runtime and country filters need each candidate's details, platform filters its
+        watch providers (search results have neither). Only the candidates that pass the
+        cheaper filters get them, fetched in parallel once and cached.
         """
         try:
             first = self.client.search_movies(query, page=1)
@@ -150,12 +180,14 @@ class MovieService:
             for r in payload.get("results") or []:
                 if isinstance(r.get("id"), int):
                     seen.setdefault(r["id"], r)
-        movies = self._upsert_summaries(list(seen.values()))
-        if filters.max_runtime is not None:
-            # Only the ones that pass the cheap filters need their runtime.
-            cheap = MovieFilters(filters.genre_tmdb_ids, filters.decade, filters.min_rating)
+        movies = [m for m in self._upsert_summaries(list(seen.values())) if m.pk not in exclude_ids]
+        if filters.needs_details:
+            cheap = filters.without_costly()
             self.ensure_details([m for m in self._with_genres(movies) if cheap.matches(m)])
-        matching = [m for m in self._with_genres(movies) if filters.matches(m)]
+        if filters.provider_ids:
+            others = filters.without_providers()
+            self.ensure_watch_providers([m for m in self._with_genres(movies) if others.matches(m)])
+        matching = filters.sort_movies([m for m in self._with_genres(movies) if filters.matches(m)])
 
         start = (page - 1) * FILTERED_PAGE_SIZE
         return SearchResult(
@@ -166,20 +198,127 @@ class MovieService:
             movies=matching[start : start + FILTERED_PAGE_SIZE],
         )
 
-    def discover(self, filters: MovieFilters, page: int = 1) -> SearchResult:
-        """TMDB `/discover/movie` with the Buscar / Descubrir filters, by popularity."""
-        try:
-            payload = self.client.discover_movies(filters.discover_params(), page=page)
-        except TMDBError as exc:
-            raise _to_api_error(exc) from exc
-        results = [r for r in payload.get("results") or [] if isinstance(r.get("id"), int)]
+    def discover(
+        self,
+        filters: MovieFilters,
+        page: int = 1,
+        exclude_ids: set[int] | frozenset[int] = frozenset(),
+    ) -> SearchResult:
+        """TMDB `/discover/movie` with the Buscar / Descubrir filters, cached
+        `DISCOVER_MAX_AGE` per filters and page (a stale page is served if TMDB fails).
+        `exclude_ids` (watched movies) are dropped from the page, so it may be shorter."""
+        digest = hashlib.sha1(f"{filters.key}&page={page}".encode()).hexdigest()
+        key = f"discover:{digest}"
+        entry = TMDBListCache.objects.filter(key=key).first()
+        if entry is None or self._is_stale(entry.fetched_at, DISCOVER_MAX_AGE):
+            try:
+                payload = self.client.discover_movies(filters.discover_params(), page=page)
+            except TMDBError as exc:
+                if entry is None:
+                    raise _to_api_error(exc) from exc
+                logger.warning("Serving a stale discover page (%s): %r", filters.key, exc)
+            else:
+                results = [r for r in payload.get("results") or [] if isinstance(r.get("id"), int)]
+                self._upsert_summaries(results)
+                entry, _ = TMDBListCache.objects.update_or_create(
+                    key=key,
+                    defaults={
+                        "tmdb_ids": [r["id"] for r in results],
+                        "extra": {
+                            "total_pages": int(payload.get("total_pages") or 0),
+                            "total_results": int(payload.get("total_results") or 0),
+                        },
+                        "fetched_at": timezone.now(),
+                    },
+                )
+        movies = Movie.objects.in_bulk(entry.tmdb_ids, field_name="tmdb_id")
         return SearchResult(
             query="",
-            page=int(payload.get("page") or page),
-            total_pages=min(int(payload.get("total_pages") or 0), TMDB_MAX_PAGE),
-            total_results=int(payload.get("total_results") or 0),
-            movies=self._upsert_summaries(results),
+            page=page,
+            total_pages=min(int(entry.extra.get("total_pages") or 0), TMDB_MAX_PAGE),
+            total_results=int(entry.extra.get("total_results") or 0),
+            movies=[
+                movies[tid]
+                for tid in entry.tmdb_ids
+                if tid in movies and movies[tid].pk not in exclude_ids
+            ],
         )
+
+    # ------------------------------------------------------------ where to watch
+
+    def watch_providers(self) -> list[WatchProvider]:
+        """The region's main streaming platforms (filter chips: FEATURED_PROVIDERS), asked to
+        TMDB at most once per `TMDB_CACHE_DAYS`; a stale list is served if TMDB fails, [] if
+        there is none."""
+        region = settings.TMDB_WATCH_REGION
+        key = f"providers:{region}"
+        entry = TMDBListCache.objects.filter(key=key).first()
+        if entry is None or self._is_stale(entry.fetched_at):
+            try:
+                payload = self.client.get_watch_providers(region)
+            except TMDBError as exc:
+                logger.warning("Could not load the watch providers of %s: %r", region, exc)
+            else:
+                providers = normalize_watch_providers(payload, region)
+                if region in FEATURED_PROVIDERS:
+                    by_tmdb_id = {p["tmdb_id"]: p for p in providers}
+                    featured = FEATURED_PROVIDERS[region]
+                    providers = [by_tmdb_id[i] for i in featured if i in by_tmdb_id]
+                else:
+                    providers = providers[:PROVIDER_LIST_SIZE]
+                for provider in providers:
+                    WatchProvider.objects.update_or_create(
+                        tmdb_id=provider["tmdb_id"],
+                        defaults={k: v for k, v in provider.items() if k != "tmdb_id"},
+                    )
+                entry, _ = TMDBListCache.objects.update_or_create(
+                    key=key,
+                    defaults={
+                        "tmdb_ids": [p["tmdb_id"] for p in providers],
+                        "fetched_at": timezone.now(),
+                    },
+                )
+        if entry is None:
+            return []
+        by_id = WatchProvider.objects.in_bulk(entry.tmdb_ids, field_name="tmdb_id")
+        return [by_id[tid] for tid in entry.tmdb_ids if tid in by_id]
+
+    def get_movie_watch_providers(self, movie_id: int) -> dict[str, Any]:
+        """A movie's "Dónde verla" in the region: {link, streaming, rent, buy}. Refreshed
+        after `PROVIDERS_MAX_AGE`; if TMDB fails, the cached ones (error if never synced)."""
+        movie = self.get_movie(movie_id)
+        if self._is_stale(movie.providers_synced_at, PROVIDERS_MAX_AGE):
+            try:
+                payload = self.client.get_movie_watch_providers(movie.tmdb_id)
+            except TMDBError as exc:
+                if movie.providers_synced_at is None:
+                    raise _to_api_error(exc) from exc
+                logger.warning("Serving cached watch providers for movie %s: %r", movie.pk, exc)
+            else:
+                self._store_watch_providers(movie, payload)
+        return movie.watch_providers
+
+    def ensure_watch_providers(self, movies: list[Movie]) -> None:
+        """Sync the watch providers of the movies with none or stale ones (parallel, best
+        effort: a failure leaves the movie without platforms, so it does not match)."""
+        missing = {
+            str(m.pk): m for m in movies if self._is_stale(m.providers_synced_at, PROVIDERS_MAX_AGE)
+        }
+        calls = {
+            key: (lambda client, tmdb_id=movie.tmdb_id: client.get_movie_watch_providers(tmdb_id))
+            for key, movie in missing.items()
+        }
+        for key, result in self._fetch_parallel(calls).items():
+            if isinstance(result, TMDBError):
+                logger.warning("Could not sync watch providers for movie %s: %r", key, result)
+                continue
+            self._store_watch_providers(missing[key], result)
+
+    @staticmethod
+    def _store_watch_providers(movie: Movie, payload: dict[str, Any]) -> None:
+        movie.watch_providers = normalize_movie_watch_providers(payload, settings.TMDB_WATCH_REGION)
+        movie.providers_synced_at = timezone.now()
+        movie.save(update_fields=["watch_providers", "providers_synced_at", "updated_at"])
 
     @staticmethod
     def _with_genres(movies: list[Movie]) -> list[Movie]:

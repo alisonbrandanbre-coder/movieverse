@@ -10,9 +10,11 @@ import type {
   MoodResults,
   MovieSearchPage,
   MovieSummary,
+  MovieWatchProviders,
+  WatchProvider,
 } from "@/types/movie";
 
-import { filtersKey, hasFilters, NO_FILTERS, toQuery, type MovieFilters } from "./filters";
+import { changesResults, filtersKey, NO_FILTERS, toQuery, type MovieFilters } from "./filters";
 
 export interface MovieSummaryDto {
   id: number;
@@ -60,6 +62,25 @@ interface MovieCreditsDto {
   cast: CastMemberDto[];
 }
 
+interface WatchProviderDto {
+  tmdb_id: number;
+  name: string;
+  logo_url: string | null;
+}
+
+interface WatchProvidersDto {
+  region: string;
+  results: WatchProviderDto[];
+}
+
+interface MovieWatchProvidersDto {
+  region: string;
+  link: string | null;
+  streaming: WatchProviderDto[];
+  rent: WatchProviderDto[];
+  buy: WatchProviderDto[];
+}
+
 export const SEARCH_MIN_LENGTH = 2;
 
 interface MovieCardDto extends MovieSummaryDto {
@@ -82,14 +103,16 @@ export const movieKeys = {
   all: ["movies"] as const,
   trending: ["movies", "trending"] as const,
   mood: (slug: string, page: number) => ["movies", "mood", slug, page] as const,
-  // Without filters the key is the autocomplete's too (shared cache).
+  // Without filters (nor another order) the key is the autocomplete's too (shared cache).
   search: (query: string, page: number, filters: MovieFilters = NO_FILTERS) =>
-    hasFilters(filters)
+    changesResults(filters)
       ? (["movies", "search", query, page, filtersKey(filters)] as const)
       : (["movies", "search", query, page] as const),
   discover: (filters: MovieFilters, page: number) => ["movies", "discover", filtersKey(filters), page] as const,
   detail: (id: number) => ["movies", "detail", id] as const,
   credits: (id: number) => ["movies", "credits", id] as const,
+  providers: ["movies", "providers"] as const,
+  watchProviders: (id: number) => ["movies", "watch-providers", id] as const,
 };
 
 export function toSummary(dto: MovieSummaryDto): MovieSummary {
@@ -148,7 +171,7 @@ export async function searchMovies(
   );
 }
 
-/** Catalog by filters without a text (TMDB discover, by popularity). */
+/** Catalog by filters without a text (TMDB discover). */
 export async function discoverMovies(filters: MovieFilters, page = 1, signal?: AbortSignal): Promise<MovieSearchPage> {
   return toSearchPage(await apiRequest<MovieSearchDto>("/movies/discover", { params: { page, ...toQuery(filters) }, signal }));
 }
@@ -176,4 +199,26 @@ export async function getTrending(signal?: AbortSignal): Promise<MovieList> {
 export async function getMood(slug: string, page = 1, signal?: AbortSignal): Promise<MoodResults> {
   const dto = await apiRequest<MoodResultsDto>(`/movies/mood/${encodeURIComponent(slug)}`, { params: { page }, signal });
   return { mood: dto.mood, page: dto.page, hasMore: dto.has_more, movies: dto.results.map(toCard), degraded: dto.degraded };
+}
+
+function toWatchProvider(dto: WatchProviderDto): WatchProvider {
+  return { tmdbId: dto.tmdb_id, name: dto.name, logoUrl: dto.logo_url };
+}
+
+/** Streaming platforms of the region, for the "Dónde verla" filter. */
+export async function getWatchProviders(signal?: AbortSignal): Promise<WatchProvider[]> {
+  const dto = await apiRequest<WatchProvidersDto>("/movies/providers", { signal });
+  return dto.results.map(toWatchProvider);
+}
+
+/** Where a movie can be watched in the region (streaming, rent, buy). */
+export async function getMovieWatchProviders(id: number, signal?: AbortSignal): Promise<MovieWatchProviders> {
+  const dto = await apiRequest<MovieWatchProvidersDto>(`/movies/${id}/providers`, { signal });
+  return {
+    region: dto.region,
+    link: dto.link,
+    streaming: dto.streaming.map(toWatchProvider),
+    rent: dto.rent.map(toWatchProvider),
+    buy: dto.buy.map(toWatchProvider),
+  };
 }

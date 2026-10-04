@@ -73,10 +73,12 @@ GET /health  →  {"status": "ok", "database": "ok"}   (503 si la DB no responde
 # Movies
 
 ```text
-GET /movies/search?q=interstellar[&genres=15,17&decade=1990&rating=7&runtime=120]
-GET /movies/discover?genres=15,17&decade=1990&rating=7&runtime=90&page=1
+GET /movies/search?q=interstellar[&genres=15,17&providers=8,337&runtime=long&sort=rating…]
+GET /movies/discover?genres=15,17&decade=1990&rating=7&runtime=short&countries=AR,OTHER&page=1
+GET /movies/providers
 GET /movies/{id}
 GET /movies/{id}/credits
+GET /movies/{id}/providers
 GET /movies/onboarding-sample?genres=15,17&avoid=11
 ```
 
@@ -146,12 +148,23 @@ GET /movies/mood/{slug}?page=1
 |---|---|---|
 | `genres` | ids **locales** separados por coma (los de `/preferences/options`) | la película tiene **todos** esos géneros |
 | `decade` | `1950`…`2020` (múltiplo de 10) | estrenada en esa década |
-| `rating` | `6` · `7` · `8` | `vote_average` ≥ valor, con al menos 50 votos |
-| `runtime` | `90` · `120` | duración **menor** a esos minutos |
+| `rating` | `6` · `7` · `8` | `vote_average` ≥ valor, con **al menos 100 votos** (`RATED_MIN_VOTES`) |
+| `runtime` | `short` (< 90 min) · `normal` (90–119) · `long` (120–150) · `epic` (> 150) | duración en ese rango |
+| `providers` | ids de TMDB de plataformas (los de `/movies/providers`), hasta 10 | se puede ver en streaming (suscripción, gratis o con anuncios) en **alguna** de ellas, en `TMDB_WATCH_REGION` (AR) |
+| `countries` | `AR` `US` `GB` `FR` `ES` `IT` `KR` `JP` `MX` · `OTHER` | país de origen: **alguno** de ellos. `OTHER` = ninguno de los listados (en discover, TMDB no puede negar un país: se piden los ~30 orígenes más frecuentes fuera de la lista, `OTHER_COUNTRIES`) |
+| `popularity` | `hidden` · `balanced` · `blockbuster` | los buckets del recomendador por votos (`scoring.BUCKET_THRESHOLDS`): Joyas ocultas = `HIDDEN` (< 800), Equilibrado = `MEDIUM` + `POPULAR` (800–14 999), Taquilleras = `VERY_POPULAR` (≥ 15 000) |
+| `sort` | `relevance` (default) · `rating` · `newest` · `oldest` · `popular` | orden. En discover: relevancia = popularidad de TMDB, `popular` = más votadas, `rating` exige 100 votos, `newest` no muestra estrenos futuros. En la búsqueda, relevancia = el orden de TMDB y el resto se ordena localmente (sin fecha o con < 100 votos, al final) |
+| `hide_watched` | `true` / `1` | oculta las que el usuario marcó como **Vista** |
 
-- **`/movies/discover`** (sin texto): TMDB `/discover/movie` ordenado por popularidad (siempre con ≥ 50 votos). Misma respuesta que la búsqueda, con `query: ""`. Sin filtros devuelve las populares.
-- **`/movies/search` con filtros**: la búsqueda de TMDB no filtra, así que el backend trae las primeras 3 páginas de TMDB (hasta 60 títulos), las filtra y pagina localmente de a 20 (`total_results` / `total_pages` son los del resultado filtrado). Con `runtime`, sólo para las candidatas que pasan el resto de los filtros se piden los detalles (los resultados de búsqueda no traen duración) y quedan cacheados; una duración desconocida no pasa el filtro. Sin filtros, la búsqueda es la de siempre.
+- **`/movies/discover`** (sin texto): TMDB `/discover/movie` (siempre con ≥ 50 votos). Misma respuesta que la búsqueda, con `query: ""`. Sin filtros devuelve las populares. **Caché**: cada combinación de filtros + página se guarda 12 h (`DISCOVER_MAX_AGE`) en `TMDBListCache` (clave `discover:<sha1>`, con `total_pages` / `total_results` en `extra`); si TMDB falla se sirve la página vencida, y sin caché → 503. `hide_watched` se aplica sobre la página cacheada (puede traer menos de 20).
+- **`/movies/search` con filtros, otro orden u `hide_watched`**: la búsqueda de TMDB no filtra, así que el backend trae las primeras 3 páginas de TMDB (hasta 60 títulos), las filtra, ordena y pagina localmente de a 20 (`total_results` / `total_pages` son los del resultado filtrado). `runtime` y `countries` necesitan los detalles y `providers` las plataformas de cada película: se piden (en paralelo y cacheados) sólo para las candidatas que pasan los filtros baratos; un dato desconocido no pasa el filtro. Sin nada de eso, la búsqueda es la de siempre.
 - Valor inválido o género inexistente → `400 VALIDATION_ERROR`.
+
+## Dónde verla
+
+`GET /movies/providers` → `{region: "AR", results: [{tmdb_id, name, logo_url}]}`: las plataformas para los chips del filtro. En AR, los principales servicios de streaming curados en `FEATURED_PROVIDERS` (el ranking de TMDB mezcla tiendas de alquiler/compra y deja a HBO Max en el puesto 35); en otra región, las 12 primeras por prioridad de TMDB. Nombres y logos (`w92`) vienen de TMDB y se cachean `TMDB_CACHE_DAYS` (`WatchProvider` + `TMDBListCache` `providers:<region>`). Si TMDB falla: la lista vencida o `[]`.
+
+`GET /movies/{id}/providers` → `{region, link, streaming[], rent[], buy[]}` (mismos objetos; `link` = página de TMDB con las ofertas, datos de JustWatch, o `null`). Streaming junta suscripción, gratis y con anuncios sin duplicados. Se guarda en `Movie.watch_providers` y se refresca a los 2 días (`PROVIDERS_MAX_AGE`); si TMDB falla se sirve lo guardado (503 si nunca se pidió). Región configurable con `TMDB_WATCH_REGION`.
 
 ## Detail
 

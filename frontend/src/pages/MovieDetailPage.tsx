@@ -8,6 +8,7 @@ import { ErrorState } from "@/components/ui/ErrorState";
 import { MovieDetailSkeleton } from "@/components/ui/Skeleton";
 import { MovieCreditsSection } from "@/features/movies/components/MovieCreditsSection";
 import { MovieHero } from "@/features/movies/components/MovieHero";
+import { WhereToWatchSection } from "@/features/movies/components/WhereToWatchSection";
 import { useMovie } from "@/features/movies/hooks";
 
 function MovieNotFound() {
@@ -48,7 +49,8 @@ export function MovieDetailPage() {
         </button>
       </div>
       <MovieHero key={data.id} movie={data} />
-      <PageContainer>
+      <PageContainer className="flex flex-col gap-10">
+        <WhereToWatchSection movieId={data.id} />
         <MovieCreditsSection movieId={data.id} />
       </PageContainer>
     </article>

@@ -1,30 +1,53 @@
 from rest_framework import serializers
 
-from .filters import DECADES, MIN_RATINGS, RUNTIMES, MovieFilters
-from .models import Genre, Movie, MoviePerson
-from .services.images import backdrop_url, poster_url, profile_url
+from .filters import (
+    COUNTRIES,
+    DECADES,
+    MAX_PROVIDERS,
+    MIN_RATINGS,
+    OTHER_COUNTRY,
+    POPULARITY_BUCKETS,
+    RELEVANCE,
+    RUNTIME_RANGES,
+    SORTS,
+    MovieFilters,
+)
+from .models import Genre, Movie, MoviePerson, WatchProvider
+from .services.images import backdrop_url, logo_url, poster_url, profile_url
 from .services.movie_service import TMDB_MAX_PAGE
 
 SEARCH_MIN_LENGTH = 2
 SEARCH_MAX_LENGTH = 100
 
 
-class MovieFilterQuerySerializer(serializers.Serializer):
-    """Buscar / Descubrir filters: `?genres=1,2&decade=1990&rating=7&runtime=90`.
+def _csv(value: str) -> list[str]:
+    return list(dict.fromkeys(part.strip() for part in value.split(",") if part.strip()))
 
-    `genres` are local genre ids (all of them must match); `runtime` is "less than" in
-    minutes. `validated_data["filters"]` is a `MovieFilters`.
+
+class MovieFilterQuerySerializer(serializers.Serializer):
+    """Buscar / Descubrir filters, e.g.
+    `?genres=1,2&decade=1990&rating=7&runtime=long&providers=8,337&countries=AR,OTHER
+    &popularity=hidden&sort=rating&hide_watched=true`.
+
+    `genres` are local genre ids (all of them must match); `providers` TMDB provider ids and
+    `countries` ISO codes (any of them). `validated_data["filters"]` is a `MovieFilters` and
+    `validated_data["hide_watched"]` a bool (it depends on the user, not on TMDB).
     """
 
     genres = serializers.CharField(required=False, allow_blank=True, default="")
     decade = serializers.ChoiceField(choices=DECADES, required=False, allow_null=True)
     rating = serializers.ChoiceField(choices=MIN_RATINGS, required=False, allow_null=True)
-    runtime = serializers.ChoiceField(choices=RUNTIMES, required=False, allow_null=True)
+    runtime = serializers.ChoiceField(choices=list(RUNTIME_RANGES), required=False)
+    providers = serializers.CharField(required=False, allow_blank=True, default="")
+    countries = serializers.CharField(required=False, allow_blank=True, default="")
+    popularity = serializers.ChoiceField(choices=list(POPULARITY_BUCKETS), required=False)
+    sort = serializers.ChoiceField(choices=list(SORTS), required=False, default=RELEVANCE)
+    hide_watched = serializers.BooleanField(required=False, default=False)
     page = serializers.IntegerField(min_value=1, max_value=TMDB_MAX_PAGE, default=1)
 
     def validate_genres(self, value: str) -> tuple[int, ...]:
         try:
-            ids = list(dict.fromkeys(int(part) for part in value.split(",") if part.strip()))
+            ids = [int(part) for part in _csv(value)]
         except ValueError as exc:
             raise serializers.ValidationError("Usá ids numéricos separados por coma.") from exc
         genres = Genre.objects.in_bulk(ids)
@@ -32,18 +55,59 @@ class MovieFilterQuerySerializer(serializers.Serializer):
             raise serializers.ValidationError("Alguno de los géneros no existe.")
         return tuple(genres[i].tmdb_id for i in ids)
 
+    def validate_providers(self, value: str) -> tuple[int, ...]:
+        parts = _csv(value)
+        if not all(part.isdigit() and int(part) > 0 for part in parts):
+            raise serializers.ValidationError("Usá ids numéricos separados por coma.")
+        if len(parts) > MAX_PROVIDERS:
+            raise serializers.ValidationError(f"Elegí hasta {MAX_PROVIDERS} plataformas.")
+        return tuple(int(part) for part in parts)
+
+    def validate_countries(self, value: str) -> tuple[str, ...]:
+        codes = [part.upper() for part in _csv(value)]
+        valid = {*COUNTRIES, OTHER_COUNTRY}
+        if any(code not in valid for code in codes):
+            raise serializers.ValidationError("Alguno de los países no está disponible.")
+        return tuple(dict.fromkeys(codes))
+
     def validate(self, attrs: dict) -> dict:
         attrs["filters"] = MovieFilters(
             genre_tmdb_ids=attrs.pop("genres", ()),
             decade=_int_or_none(attrs.pop("decade", None)),
             min_rating=_int_or_none(attrs.pop("rating", None)),
-            max_runtime=_int_or_none(attrs.pop("runtime", None)),
+            runtime=attrs.pop("runtime", None),
+            provider_ids=attrs.pop("providers", ()),
+            countries=attrs.pop("countries", ()),
+            popularity=attrs.pop("popularity", None),
+            sort=attrs.pop("sort", RELEVANCE),
         )
         return attrs
 
 
 def _int_or_none(value) -> int | None:
     return None if value in (None, "") else int(value)
+
+
+class WatchProviderSerializer(serializers.ModelSerializer):
+    logo_url = serializers.SerializerMethodField()
+
+    class Meta:
+        model = WatchProvider
+        fields = ["tmdb_id", "name", "logo_url"]
+
+    def get_logo_url(self, provider: WatchProvider) -> str | None:
+        return logo_url(provider.logo_path)
+
+
+class MovieWatchProviderSerializer(serializers.Serializer):
+    """One platform of a movie's "Dónde verla" (stored as a dict in `Movie.watch_providers`)."""
+
+    tmdb_id = serializers.IntegerField()
+    name = serializers.CharField()
+    logo_url = serializers.SerializerMethodField()
+
+    def get_logo_url(self, provider: dict) -> str | None:
+        return logo_url(provider.get("logo_path"))
 
 
 class MovieSearchQuerySerializer(MovieFilterQuerySerializer):

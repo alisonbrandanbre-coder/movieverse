@@ -40,5 +40,8 @@ export function useFilterParams() {
     window.scrollTo?.({ top: 0 });
   }
 
-  return { filters, page, setFilters, setPage, clearFilters: () => setFilters(NO_FILTERS), searchParams, setSearchParams };
+  // Clearing the filters keeps the chosen order (it is not a filter).
+  const clearFilters = () => setFilters({ ...NO_FILTERS, sort: filters.sort });
+
+  return { filters, page, setFilters, setPage, clearFilters, searchParams, setSearchParams };
 }

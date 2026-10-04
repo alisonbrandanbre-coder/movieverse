@@ -192,6 +192,7 @@ describe("MovieDetailPage", () => {
       "GET /auth/me": me,
       "GET /movies/1": () => jsonResponse(INTERSTELLAR_DETAIL_DTO),
       "GET /movies/1/credits": () => apiError(503, "TMDB_UNAVAILABLE", "Catálogo no disponible."),
+      "GET /movies/1/providers": () => jsonResponse({ region: "AR", link: null, streaming: [], rent: [], buy: [] }),
       "GET /movies/1/interactions": noInteractions,
     });
     renderWithProviders(<AppRoutes />, { route: "/movies/1", authenticated: true });

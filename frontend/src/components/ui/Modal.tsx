@@ -10,6 +10,8 @@ interface ModalProps {
   children: ReactNode;
   /** `md` (672px, default) or `lg` (1024px, e.g. the surprise's three cards). */
   size?: "md" | "lg";
+  /** `center` (default) or `bottom`: a sheet that slides up from the bottom edge (mobile filters). */
+  placement?: "center" | "bottom";
   className?: string;
 }
 
@@ -18,9 +20,10 @@ const FOCUSABLE = 'a[href], button:not([disabled]), input:not([disabled]), selec
 /**
  * Accessible modal dialog: rendered over a blurred night backdrop, closes with Esc, the ✕
  * or a click outside; keeps Tab inside, focuses its first control and gives the focus back
- * to whatever opened it. The page behind does not scroll while it is open.
+ * to whatever opened it. The page behind does not scroll while it is open. With
+ * `placement="bottom"` it is a bottom sheet: full width, glued to the bottom, scrolls inside.
  */
-export function Modal({ open, onClose, labelledBy, children, size = "md", className = "" }: ModalProps) {
+export function Modal({ open, onClose, labelledBy, children, size = "md", placement = "center", className = "" }: ModalProps) {
   const panelRef = useRef<HTMLDivElement>(null);
   const closeRef = useRef(onClose);
   useEffect(() => {
@@ -63,9 +66,16 @@ export function Modal({ open, onClose, labelledBy, children, size = "md", classN
   }, [open]);
 
   if (!open) return null;
+  const sheet = placement === "bottom";
+  const layout = sheet
+    ? "items-end justify-center"
+    : "items-center justify-center overflow-y-auto p-4";
+  const panelLayout = sheet
+    ? "max-h-[88vh] overflow-y-auto overscroll-contain rounded-t-card border-b-0 animate-sheet-up"
+    : `my-auto ${size === "lg" ? "max-w-5xl" : "max-w-2xl"} animate-fade-up overflow-hidden rounded-card`;
   return createPortal(
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-deep/80 p-4 backdrop-blur-sm"
+      className={`fixed inset-0 z-50 flex bg-deep/80 backdrop-blur-sm ${layout}`}
       onMouseDown={(event) => event.target === event.currentTarget && onClose()}
     >
       <div
@@ -74,7 +84,7 @@ export function Modal({ open, onClose, labelledBy, children, size = "md", classN
         aria-modal="true"
         aria-labelledby={labelledBy}
         tabIndex={-1}
-        className={`relative my-auto w-full ${size === "lg" ? "max-w-5xl" : "max-w-2xl"} animate-fade-up overflow-hidden rounded-card border border-line-strong bg-base shadow-card outline-none ${className}`}
+        className={`relative w-full border border-line-strong bg-base shadow-card outline-none ${panelLayout} ${className}`}
       >
         {children}
         {/* After the content: the focus lands on the dialog's own actions first. */}
