@@ -227,4 +227,5 @@ El MVP prioriza el mapa y las recomendaciones. Quedan para las próximas iteraci
 - [`docs/PROJECT_CONTEXT.md`](docs/PROJECT_CONTEXT.md): problema, propuesta, reglas y criterios de aceptación
 - [`docs/SPRINT_PLAN.md`](docs/SPRINT_PLAN.md) y los reportes `docs/SPRINT_0_REPORT.md` … `docs/SPRINT_5_REPORT.md`
 - [`docs/DEMO_SCRIPT.md`](docs/DEMO_SCRIPT.md): guion de la demo de 5 minutos
+- [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md): deploy en producción (backend + PostgreSQL en Railway, frontend en Vercel)
 - [`CLAUDE.md`](CLAUDE.md) y `agents/`: guías para agentes de IA que trabajan en el repo

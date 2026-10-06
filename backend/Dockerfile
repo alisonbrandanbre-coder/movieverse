@@ -7,8 +7,11 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 
 WORKDIR /app
 
+# Production installs only the runtime dependencies; docker compose passes
+# requirements-dev.txt (pytest, ruff) for local development.
+ARG REQUIREMENTS=requirements.txt
 COPY requirements.txt requirements-dev.txt ./
-RUN pip install -r requirements-dev.txt
+RUN pip install -r ${REQUIREMENTS}
 
 COPY . .
 
@@ -17,4 +20,6 @@ USER appuser
 
 EXPOSE 8000
 
-CMD ["sh", "-c", "python manage.py migrate --noinput && python manage.py runserver 0.0.0.0:8000"]
+# Production (Railway): migrate + collectstatic + Gunicorn. docker compose overrides it
+# with `runserver` for local development.
+CMD ["sh", "start.sh"]

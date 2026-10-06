@@ -20,7 +20,12 @@ services:
       retries: 10
 
   backend:
-    build: ./backend
+    build:
+      context: ./backend
+      args:
+        REQUIREMENTS: requirements-dev.txt  # pytest + ruff inside the container
+    # Development server with autoreload (the image's default CMD is the production start.sh).
+    command: sh -c "python manage.py migrate --noinput && python manage.py runserver 0.0.0.0:8000"
     env_file:
       - path: .env
         required: false

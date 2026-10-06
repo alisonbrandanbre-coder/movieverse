@@ -1,7 +1,12 @@
 import { session } from "@/features/auth/session";
 import type { ApiErrorBody } from "@/types/api";
 
-const API_URL = (import.meta.env.VITE_API_URL ?? "http://localhost:8000/api/v1").replace(/\/$/, "");
+// Set at build time (Vercel: VITE_API_URL). The localhost fallback is only for `npm run dev`
+// and tests; a production build without it falls back to this origin's /api/v1.
+const API_URL = (import.meta.env.VITE_API_URL || (import.meta.env.DEV ? "http://localhost:8000/api/v1" : "/api/v1")).replace(
+  /\/$/,
+  "",
+);
 
 export class ApiError extends Error {
   readonly status: number;
